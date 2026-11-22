@@ -105,6 +105,17 @@ object Wav {
         error("no data chunk")
     }
 
+    /** Duration from a canonical 44-byte header (files this app wrote), without reading the samples. */
+    fun durationMs(file: File): Long = runCatching {
+        RandomAccessFile(file, "r").use { raf ->
+            val h = ByteArray(44).also { raf.readFully(it) }
+            val bb = ByteBuffer.wrap(h).order(ByteOrder.LITTLE_ENDIAN)
+            val channels = bb.getShort(22).toInt().coerceAtLeast(1)
+            val rate = bb.getInt(24).coerceAtLeast(1)
+            (raf.length() - 44) / 2 / channels * 1000 / rate
+        }
+    }.getOrDefault(0)
+
     fun write(file: File, pcm: Pcm) {
         WavWriter(file, pcm.sampleRate).use { it.write(pcm.samples) }
     }
@@ -127,6 +138,24 @@ object Wav {
         if (gain in 0.95..1.05) return pcm
         val out = ShortArray(pcm.samples.size) { (pcm.samples[it] * gain).toInt().coerceIn(-32768, 32767).toShort() }
         return Pcm(pcm.sampleRate, pcm.channels, out)
+    }
+
+    /**
+     * Cuts leading/trailing silence (button taps, breaths, dead air at the start of a file), keeping
+     * 100 ms before and 200 ms after the sound. Mono input. Returns [pcm] unchanged if almost all silent.
+     */
+    fun trimSilence(pcm: Pcm, thresholdDb: Double = -45.0): Pcm {
+        val rate = pcm.sampleRate
+        val win = maxOf(1, rate / 50)
+        val s = pcm.samples
+        fun loud(at: Int) = rmsDbfs(s.copyOfRange(at, minOf(at + win, s.size))) > thresholdDb
+        var start = 0
+        while (start + win < s.size && !loud(start)) start += win
+        var end = s.size
+        while (end - win > start && !loud(end - win)) end -= win
+        val from = (start - rate / 10).coerceAtLeast(0)
+        val to = (end + rate / 5).coerceAtMost(s.size)
+        return if (to - from < rate / 2) pcm else Pcm(rate, 1, s.copyOfRange(from, to))
     }
 
     /** Down-mixes to mono so the in-call path gets the simplest format. */

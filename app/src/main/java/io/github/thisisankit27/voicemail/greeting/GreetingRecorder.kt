@@ -45,7 +45,7 @@ class GreetingRecorder(private val target: File, private val takeFile: File) {
             } finally {
                 record.stop()
                 record.release()
-                val pcm = Wav.normalize(trimSilence(Pcm(RATE, 1, samples.toShortArray())))
+                val pcm = Wav.normalize(Wav.trimSilence(Pcm(RATE, 1, samples.toShortArray())))
                 if (pcm.durationMs > 500) Wav.write(takeFile, pcm)
                 _state.value = RecorderState(recording = false, elapsedMs = pcm.durationMs, hasTake = takeFile.exists())
             }
@@ -59,20 +59,6 @@ class GreetingRecorder(private val target: File, private val takeFile: File) {
         if (!takeFile.exists()) return false
         takeFile.copyTo(target, overwrite = true)
         return true
-    }
-
-    /** Cuts leading/trailing silence (the tap on the button, the breath before speaking). */
-    private fun trimSilence(pcm: Pcm): Pcm {
-        val win = RATE / 50
-        val s = pcm.samples
-        fun loud(at: Int) = Wav.rmsDbfs(s.copyOfRange(at, minOf(at + win, s.size))) > -45
-        var start = 0
-        while (start + win < s.size && !loud(start)) start += win
-        var end = s.size
-        while (end - win > start && !loud(end - win)) end -= win
-        val from = (start - RATE / 10).coerceAtLeast(0)
-        val to = (end + RATE / 5).coerceAtMost(s.size)
-        return if (to - from < RATE / 2) pcm else Pcm(RATE, 1, s.copyOfRange(from, to))
     }
 
     companion object {

@@ -256,8 +256,14 @@ private fun StatusCard(setup: SetupSnapshot, onOpenSetup: () -> Unit, onOpenGree
                     Icon(Icons.Filled.Hearing, null, tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f)) {
                         Text("Your greeting", style = MaterialTheme.typography.labelLarge)
+                        val own = if (settings.allowMessages) app.greetings.ownAudio(settings) else null
                         Text(
-                            app.greetings.text(settings, if (settings.allowMessages) GreetingKind.MESSAGE else GreetingKind.CLOSING),
+                            when {
+                                own == null -> app.greetings.text(settings, if (settings.allowMessages) GreetingKind.MESSAGE else GreetingKind.CLOSING)
+                                settings.greetingSource == io.github.thisisankit27.voicemail.data.GreetingSource.UPLOADED ->
+                                    "Uploaded: ${app.greetings.uploadedName ?: "audio file"} · ${Formats.duration(io.github.thisisankit27.voicemail.core.Wav.durationMs(own))}"
+                                else -> "Your own recording · ${Formats.duration(io.github.thisisankit27.voicemail.core.Wav.durationMs(own))}"
+                            },
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )

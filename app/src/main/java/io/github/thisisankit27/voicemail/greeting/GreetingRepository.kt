@@ -55,6 +55,27 @@ class GreetingRepository(private val context: Context) {
 
     fun file(kind: GreetingKind): File = File(dir, if (kind == GreetingKind.MESSAGE) "message.wav" else "closing.wav")
     val recordedFile: File get() = File(dir, "recorded.wav")
+    val uploadedFile: File get() = File(dir, "uploaded.wav")
+
+    /** Display name of the uploaded file, kept next to it. */
+    var uploadedName: String?
+        get() = File(dir, "uploaded.name").takeIf { it.exists() }?.readText()
+        set(value) { File(dir, "uploaded.name").writeText(value.orEmpty()) }
+
+    /** The file played for the "messages allowed" greeting with these settings, if it is a file. */
+    fun ownAudio(settings: AppSettings): File? = when (settings.greetingSource) {
+        GreetingSource.RECORDED -> recordedFile
+        GreetingSource.UPLOADED -> uploadedFile
+        GreetingSource.TTS -> null
+    }?.takeIf { it.exists() }
+
+    /** Saves an imported file as the uploaded greeting (atomically). */
+    suspend fun saveUploaded(imported: ImportedGreeting) = withContext(Dispatchers.IO) {
+        val tmp = File(dir, "uploaded.wav.tmp")
+        Wav.write(tmp, imported.pcm)
+        tmp.renameTo(uploadedFile)
+        uploadedName = imported.sourceName
+    }
 
     fun text(settings: AppSettings, kind: GreetingKind): String {
         val template = if (kind == GreetingKind.MESSAGE) settings.greetingText else settings.closingText
@@ -75,8 +96,8 @@ class GreetingRepository(private val context: Context) {
      * otherwise the TTS render, re-rendering first if it is stale.
      */
     suspend fun pcmFor(settings: AppSettings, kind: GreetingKind): Pcm? = withContext(Dispatchers.IO) {
-        if (kind == GreetingKind.MESSAGE && settings.greetingSource == GreetingSource.RECORDED && recordedFile.exists()) {
-            return@withContext runCatching { Wav.toMono(Wav.read(recordedFile)) }.getOrNull()
+        if (kind == GreetingKind.MESSAGE) ownAudio(settings)?.let { file ->
+            return@withContext runCatching { Wav.toMono(Wav.read(file)) }.getOrNull()
         }
         if (!isRendered(settings, kind)) render(settings, kind)
         runCatching { Wav.toMono(Wav.read(file(kind))) }.onFailure { AppLog.w("greeting unreadable", it) }.getOrNull()

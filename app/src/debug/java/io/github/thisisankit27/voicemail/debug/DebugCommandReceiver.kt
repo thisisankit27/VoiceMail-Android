@@ -39,6 +39,16 @@ class DebugCommandReceiver : BroadcastReceiver() {
                     "hangup" -> io.github.thisisankit27.voicemail.telephony.CallManager.hangupAll()
                     "calls" -> AppLog.i("calls: ${io.github.thisisankit27.voicemail.telephony.CallManager.calls.value}")
                     "seed" -> seed(context)
+                    "import_file" -> {
+                        // Same path as the Upload picker, for a file pushed into the app's external files dir.
+                        val f = java.io.File(context.getExternalFilesDir(null), intent.getStringExtra("name") ?: "")
+                        val t0 = android.os.SystemClock.elapsedRealtime()
+                        val g = io.github.thisisankit27.voicemail.greeting.AudioImport.import(context, android.net.Uri.fromFile(f))
+                        app.greetings.saveUploaded(g)
+                        app.settings.update { it.copy(greetingSource = io.github.thisisankit27.voicemail.data.GreetingSource.UPLOADED) }
+                        AppLog.i("import_file ${f.name}: ${g.pcm.sampleRate} Hz mono ${g.pcm.durationMs} ms (file ${g.originalMs} ms, capped=${g.trimmedToMax}) in ${android.os.SystemClock.elapsedRealtime() - t0} ms")
+                    }
+                    "greeting_source" -> app.settings.update { it.copy(greetingSource = io.github.thisisankit27.voicemail.data.GreetingSource.valueOf(intent.getStringExtra("value") ?: "TTS")) }
                     "caller_side" -> app.settings.update { it.copy(saveCallerSide = intent.getBooleanExtra("value", true)) }
                     "max_message" -> app.settings.update { it.copy(maxMessageSeconds = intent.getIntExtra("value", 30)) }
                     "settings" -> AppLog.i("settings: ${app.settings.current().let { "max=${it.maxMessageSeconds}s silence=${it.silenceStopSeconds}s callerSide=${it.saveCallerSide} ring=${it.ringSeconds}s" }}")
