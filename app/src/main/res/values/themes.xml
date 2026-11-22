@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.Voicemail" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+    <style name="Theme.Voicemail.Call" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FF0B1F2A</item>
+        <item name="android:windowShowWallpaper">false</item>
+    </style>
+</resources>

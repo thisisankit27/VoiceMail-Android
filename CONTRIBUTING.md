@@ -14,6 +14,9 @@ Technical claims in docs and PR descriptions carry an evidence label from [TECHN
 - Never change a device's default dialer, call forwarding or carrier settings without writing down the user action and how to revert it.
 - No root, no Accessibility-service workarounds, no hidden or reflection-based APIs. **Exception (owner decision, 2026-11-22):** the *personal build's* shell-identity audio helper (Option 4) may use the ADB shell identity and the minimum hidden API needed. It must stay isolated in that helper and is never distributed.
 
+## Building
+The product app is the root Gradle build (`./gradlew :app:assembleDebug :app:testDebugUnitTest`). `scripts/loopback-regression.sh` runs the network-free call regression on a connected phone.
+
 ## Code standards (from PR-07 onward)
 - Kotlin with the official style, enforced by ktlint/detekt.
 - Business logic lives in pure Kotlin with unit tests. Android framework types sit behind interfaces.

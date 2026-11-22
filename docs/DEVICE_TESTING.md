@@ -150,6 +150,7 @@ These run against the **product app** once Phase 4 exists. They apply to spike b
 ## 6. Results log
 | Date | Build / commit | SIM / operator | Tests run | Summary | Link to logs (private) |
 |---|---|---|---|---|---|
+| 2026-11-22 | app 0.1.0 (`feat/app-helper-autostart`) | n/a (loopback) | Tests 1, 2, 3, 4, 13 (logic), take-over, send-now, helper missing; auto-start up to the owner prompts | **All loopback scenarios pass.** The app's ADB key is accepted by adbd's prompt. The TLS/reboot start waits on two one-time owner taps | [app helper log](device-logs/app-helper-run-2026-11-22.md) |
 | 2026-11-22 | n/a | none (both slots ABSENT) | Baseline inspection only | See §1 | device-logs/ |
 | 2026-11-22 | probe 0.4 (`spike/male-voice`) | n/a | E7 voice choice | Owner wants a **male, confident** greeting. Measured median F0 of the installed offline en-IN voices: `end` 138 Hz and `ene` 154 Hz (male); `ena` 216 Hz, `enc` 250 Hz and `en-IN-language` 250 Hz (female). The real-call greeting had been the female `enc`. New default: `en-in-x-end-local`, pitch 0.92, rate 0.95. Owner approved by listening | local |
 | 2026-11-22 | probe 0.3 + mute | **Airtel, IN_SERVICE** (real call from a second phone) | E2 (real), E11, E12 | **Greeting injected into the call; caller captured from the downlink; room not sent** | [real-call log](device-logs/realcall-shell-run-2026-11-22.md) |

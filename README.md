@@ -5,13 +5,23 @@ A native Android app that aims to give missed calls a modern voicemail experienc
 - messages recorded and transcribed **on the device**
 - a polished inbox
 
-> **Project status: Phase 0, technical feasibility.** No application code yet. **2026-11-22:** the decisive experiment failed. During a call, Android delivers only silence to the app's microphone capture, so a normal app cannot record caller messages ([details](docs/TECHNICAL_FEASIBILITY.md#1-executive-verdict)). **Personal-build path under test:** a helper running as the ADB shell identity (no root) is permitted to play the greeting *into* the call and record the caller *from* it. **A real call (Airtel) confirmed it:** the greeting was played into the call and the caller was recorded, with no speakerphone and no room audio ([Option 4](docs/TECHNICAL_FEASIBILITY.md#option-4-default-dialer--shell-identity-audio-helper-personal-build-only-owner-decision-2026-11-22)).
+> **Project status: personal build in development (2026-11-22).** The product app lives in [`app/`](app/). It is a default phone app that answers unanswered calls, plays the greeting into the call and records the caller, through a shell-identity audio helper that it starts itself over Wireless debugging (no PC needed after a one-time setup). See [Personal build setup](docs/PERSONAL_BUILD_SETUP.md).
+>
+> **Phase 0 history.** **2026-11-22:** the decisive experiment failed. During a call, Android delivers only silence to the app's microphone capture, so a normal app cannot record caller messages ([details](docs/TECHNICAL_FEASIBILITY.md#1-executive-verdict)). **Personal-build path under test:** a helper running as the ADB shell identity (no root) is permitted to play the greeting *into* the call and record the caller *from* it. **A real call (Airtel) confirmed it:** the greeting was played into the call and the caller was recorded, with no speakerphone and no room audio ([Option 4](docs/TECHNICAL_FEASIBILITY.md#option-4-default-dialer--shell-identity-audio-helper-personal-build-only-owner-decision-2026-11-22)).
 >
 > **Read this first:** Android's public APIs do **not** let third-party apps record cellular call audio or play audio into a call. This project is testing an on-device "answering machine" design, in which a default-dialer app answers on speakerphone. It works acoustically, if at all. Whether that works is being tested on real hardware before any product work depends on it. See [Technical Feasibility](docs/TECHNICAL_FEASIBILITY.md).
+
+## Build and install
+```bash
+./gradlew :app:assembleDebug :app:testDebugUnitTest
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+Then follow the one-time steps in [Personal build setup](docs/PERSONAL_BUILD_SETUP.md#one-time-setup--you). The Phase 0 probe under `spikes/` has its own separate build.
 
 ## Documentation
 | Document | Purpose |
 |---|---|
+| [Personal build setup](docs/PERSONAL_BUILD_SETUP.md) | How the audio helper auto-starts, one-time owner steps and how to revert them |
 | [Product requirements](docs/PRODUCT_REQUIREMENTS.md) | Vision, requirement feasibility, MVP tiers, non-goals |
 | [Technical feasibility](docs/TECHNICAL_FEASIBILITY.md) | Capability-by-capability verdicts, options compared, experiments |
 | [Telephony research](docs/TELEPHONY_RESEARCH.md) | API-level notes with official sources, Indian carrier notes |
@@ -25,8 +35,8 @@ A native Android app that aims to give missed calls a modern voicemail experienc
 | [Device testing](docs/DEVICE_TESTING.md) | Moto G60 baseline, Phase 0 experiments, Tests 1–18 |
 | [Risk register](docs/RISK_REGISTER.md) | Ranked risks and mitigations |
 
-## Planned stack
-Kotlin · Jetpack Compose (Material 3) · Hilt · Room + FTS · Proto DataStore · WorkManager · Media3 · Android Telecom (InCallService) · platform TextToSpeech · offline STT (whisper.cpp or Vosk, chosen by benchmark).
+## Stack
+Kotlin · Jetpack Compose (Material 3) · Room · DataStore · WorkManager · Media3 · Android Telecom (InCallService) · platform TextToSpeech · a minimal in-app ADB client (key auth + TLS) for the helper. Planned: offline STT (whisper.cpp or Vosk, chosen by benchmark). Hilt and Proto DataStore from the original plan are deferred: the dependency graph is small enough to wire by hand, and Preferences DataStore covers the settings.
 
 ## Primary test device
 Motorola Moto G60 (Android 12, API 31, dual-SIM), inspected over ADB. See [Device testing](docs/DEVICE_TESTING.md).
