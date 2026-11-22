@@ -88,8 +88,8 @@ These use the throwaway `spikes/telecom-probe` app (PRs 02–05). Each row needs
 ### 4.2 Shell-identity experiments (personal build; Option 4)
 | ID | Question | Loopback result (2026-11-22) | Real call |
 |---|---|---|---|
-| **E11** | Can a uid-2000 helper play the greeting **into the call** (Telephony TX)? | Framework: ✅ `MODIFY_PHONE_STATE` granted, routed to type 18. HAL: ⚠️ `Invalid session id 0` (no modem session) | **Pending.** Run `spikes/telecom-probe/scripts/realcall-shell-test.sh` |
-| **E12** | Can a uid-2000 helper record the caller **from the call** (`VOICE_DOWNLINK`)? | ✅ initialised, recording, `silenced=false`. Audio zeros (no modem audio) | **Pending.** Same script |
+| **E11** | Can a uid-2000 helper play the greeting **into the call** (Telephony TX)? | Framework: ✅ `MODIFY_PHONE_STATE` granted, routed to type 18. HAL: ⚠️ `Invalid session id 0` (no modem session) | **✅ PASS (Airtel, 2026-11-22).** Greeting found in the uplink capture (xcorr 1.01 vs control 0.48). No HAL error. Uplink exact zero after the greeting (mic mute holds). Caller-side intelligibility: awaiting owner confirmation. [real-call log](device-logs/realcall-shell-run-2026-11-22.md) |
+| **E12** | Can a uid-2000 helper record the caller **from the call** (`VOICE_DOWNLINK`)? | ✅ initialised, recording, `silenced=false`. Audio zeros (no modem audio) | **✅ PASS (provisional).** About 5 s of speech-level downlink signal (−11 … −24 dBFS) before the caller hung up. Owner to confirm it is the caller's voice. [real-call log](device-logs/realcall-shell-run-2026-11-22.md) |
 | E12b | Is uid-2000 MIC capture silenced during a call? | ✅ **Not silenced** (18 s live), unless the foreground app starts a newer capture | n/a |
 
 Evidence: [shell-identity log](device-logs/shell-identity-run-2026-11-22.md).
@@ -151,6 +151,7 @@ These run against the **product app** once Phase 4 exists. They apply to spike b
 | Date | Build / commit | SIM / operator | Tests run | Summary | Link to logs (private) |
 |---|---|---|---|---|---|
 | 2026-11-22 | n/a | none (both slots ABSENT) | Baseline inspection only | See §1 | device-logs/ |
+| 2026-11-22 | probe 0.3 + mute | **Airtel, IN_SERVICE** (real call from a second phone) | E2 (real), E11, E12 | **Greeting injected into the call; caller captured from the downlink; room not sent** | [real-call log](device-logs/realcall-shell-run-2026-11-22.md) |
 | 2026-11-22 | probe 0.3 (`spike/shell-identity`) | none (loopback) | E11/E12 permission and policy layers, E12b | **Shell identity is allowed to play into TX and capture downlink. Audio flow needs a real call** | [shell-identity log](device-logs/shell-identity-run-2026-11-22.md) |
 | 2026-11-22 | probe 0.2 (`spike/loopback-calls`) | none needed (loopback calling account, network-free) | E1, E2 (app), E4, E5, E6 (app), Tests 4 and 10 (logic) | **E4 FAIL: all in-call capture silenced by the framework.** E1 and E5 pass | [loopback log](device-logs/loopback-run-2026-11-22.md) |
 | 2026-11-22 | probe 0.1 (`spike/telecom-probe`) | BSNL SIM in slot 2: `LOADED`, but CS/PS registration **DENIED**, "Emergency calls only". Owner reports the prepaid plan is not recharged | E7 (provisional pass), E4 no-call baseline, E1 prep | Calls cannot be received yet. See [device-logs/probe-run-2026-11-22-nosim.md](device-logs/probe-run-2026-11-22-nosim.md) | device-logs/ |
