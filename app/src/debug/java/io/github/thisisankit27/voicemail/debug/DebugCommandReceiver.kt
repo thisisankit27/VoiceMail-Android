@@ -39,6 +39,9 @@ class DebugCommandReceiver : BroadcastReceiver() {
                     "hangup" -> io.github.thisisankit27.voicemail.telephony.CallManager.hangupAll()
                     "calls" -> AppLog.i("calls: ${io.github.thisisankit27.voicemail.telephony.CallManager.calls.value}")
                     "seed" -> seed(context)
+                    "caller_side" -> app.settings.update { it.copy(saveCallerSide = intent.getBooleanExtra("value", true)) }
+                    "max_message" -> app.settings.update { it.copy(maxMessageSeconds = intent.getIntExtra("value", 30)) }
+                    "settings" -> AppLog.i("settings: ${app.settings.current().let { "max=${it.maxMessageSeconds}s silence=${it.silenceStopSeconds}s callerSide=${it.saveCallerSide} ring=${it.ringSeconds}s" }}")
                     "init" -> AppLog.i("token ready (${app.helper.token.length} chars)")
                     "key" -> AppLog.i("adb key fingerprint ${app.helper.key.fingerprint()} authorized=${app.helper.keyAuthorized} secure=${app.helper.hasSecureSettings()}")
                     else -> AppLog.w("unknown debug cmd $cmd")

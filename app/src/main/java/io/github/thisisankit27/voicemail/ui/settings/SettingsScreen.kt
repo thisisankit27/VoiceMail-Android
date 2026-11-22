@@ -74,8 +74,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpenSetup: () -> Unit, onOpenGreeting: 
             SliderRow("Ring time before answering", "${s.ringSeconds} seconds. Your carrier may forward unanswered calls sooner (often about 20–30 s).", s.ringSeconds.toFloat(), 5f..45f, 7) {
                 update { st -> st.copy(ringSeconds = it.toInt()) }
             }
-            SliderRow("Longest message", Formats.duration(s.maxMessageSeconds * 1000L), s.maxMessageSeconds.toFloat(), 30f..300f, 8) {
-                update { st -> st.copy(maxMessageSeconds = (it / 30).toInt() * 30) }
+            SliderRow("Longest message", "${s.maxMessageSeconds} s. Then the caller hears two beeps and the call ends.", s.maxMessageSeconds.toFloat(), 10f..120f, 21) {
+                update { st -> st.copy(maxMessageSeconds = (Math.round(it / 5f) * 5)) }
             }
             SliderRow("End after silence", if (s.silenceStopSeconds == 0) "Off" else "${s.silenceStopSeconds} s of silence after the caller stops", s.silenceStopSeconds.toFloat(), 0f..20f, 9) {
                 update { st -> st.copy(silenceStopSeconds = it.toInt()) }
@@ -113,6 +113,11 @@ fun SettingsScreen(onBack: () -> Unit, onOpenSetup: () -> Unit, onOpenGreeting: 
             SectionHeader("About")
             NavRow("Setup checklist", null, onOpenSetup)
             NavRow("Diagnostics log", "Recent events, phone numbers redacted", onOpenLog)
+            SwitchRow(
+                "Keep what callers hear",
+                "Saves a copy of the call audio sent to the caller (your greeting and the beeps) with each voicemail, so you can check it. Your microphone is muted, so it never contains you.",
+                s.saveCallerSide,
+            ) { on -> update { it.copy(saveCallerSide = on) } }
             Text(
                 "Voicemail ${BuildConfig.VERSION_NAME} · personal build. Messages and greetings are stored only on this phone.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,

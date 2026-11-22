@@ -13,6 +13,9 @@ class VoicemailRepository(context: Context, private val dao: VoicemailDao) {
 
     fun audio(v: Voicemail): File? = v.audioFile?.let { File(dir, it) }?.takeIf { it.exists() }
 
+    /** Diagnostics copy of what the caller heard, if one was kept for this call. */
+    fun callerSide(v: Voicemail): File? = File(dir, "vm_${v.id}_caller.wav").takeIf { it.exists() && it.length() > 44 }
+
     suspend fun get(id: String) = dao.get(id)
     suspend fun setRead(id: String, read: Boolean) = dao.setRead(id, read)
     suspend fun markAllRead() = dao.markAllRead()
@@ -24,6 +27,7 @@ class VoicemailRepository(context: Context, private val dao: VoicemailDao) {
     suspend fun purgeDeleted() {
         for (v in dao.deleted()) {
             v.audioFile?.let { File(dir, it).delete() }
+            File(dir, "vm_${v.id}_caller.wav").delete()
             dao.purge(v.id)
         }
     }

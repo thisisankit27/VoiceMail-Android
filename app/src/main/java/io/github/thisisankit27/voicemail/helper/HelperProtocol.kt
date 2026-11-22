@@ -15,7 +15,7 @@ import java.io.IOException
  */
 object HelperProtocol {
     /** Bump when frames change: the app restarts a helper that reports another version. */
-    const val VERSION = 3
+    const val VERSION = 4
     const val PORT = 47231
     const val PROCESS_NAME = "vm-audio-helper"
     const val TOKEN_ENV = "VM_HELPER_TOKEN"

@@ -55,8 +55,27 @@ session: recording stopped (caller hung up) duration=10100ms peak=-29.5 dBFS emp
 - During the greeting the owner used **Listen in** (speaker on, then back to earpiece). Neither the greeting nor the recording was affected.
 - The audio file is kept on the phone only.
 
-## 6. Voicemail session regression (loopback)
-`scripts/loopback-regression.sh`, ring time 6 s:
+## 6. Start beep, 30 s limit and caller-side copy (2026-11-23, Airtel, two real calls)
+**Report from a caller:** after the greeting, the beep was not heard. In the earlier build the beep was a separate 450 ms clip played after the greeting clip had ended. The likely cause: the in-call music path reopens for each clip and loses its first moment, which for a short beep is everything. The greeting is long enough not to notice.
+
+**Changes:**
+- Greeting, 350 ms pause and a 500 ms beep (1 kHz, 10 ms fades) now go out as **one clip**.
+- Every clip has a 500 ms silent lead-in.
+- **Messages are capped at 30 s** (owner choice). The caller then hears two short beeps and the app hangs up after a 1.5 s grace. Silence no longer ends a message early (default off).
+- Diagnostics: *Keep what callers hear* records the call uplink, which shows on the voicemail as *What the caller heard*.
+
+**What the caller heard** (uplink copies, timeline from an offline analyser with a 1 kHz Goertzel detector):
+```text
+0.00–0.85 s  silence (lead-in)
+0.85–7.85 s  greeting, −4 to −7 dBFS
+8.80–9.30 s  BEEP, 1 kHz, ~500 ms          ← now reaches the caller
+then         silence (the G60's mic is muted)
+```
+- **Call 2** (caller stayed on the line): recording stopped at **exactly 30.0 s** (`max length`), the end beeps were played into TX, and the app hung up. **The caller confirmed hearing both end beeps.** The first uplink copy missed them only because it stopped 70 ms after the helper finished writing; the uplink lags ~0.5–0.9 s. The 1.5 s grace now keeps the line and the copy open long enough.
+- **Two in-call captures at once**: on call 1 the message came back as digital silence while an uplink copy was running. The caller had only blown into the mic, and the network does not carry that sound reliably (noise suppression), so this is **not proven** to be a capture conflict. As a precaution, the uplink copy is paused while the message is recorded (the order the probe proved). On call 2 the message recorded sound (−19.9 dBFS) with that order.
+
+## 7. Voicemail session regression (loopback)
+`scripts/loopback-regression.sh`, ring time 6 s (23 checks as of 2026-11-23, including the message limit → end beeps → hang-up):
 
 | Scenario | Expected | Result |
 |---|---|---|

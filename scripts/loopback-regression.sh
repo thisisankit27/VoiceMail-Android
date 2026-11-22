@@ -28,7 +28,7 @@ echo "== T1 unanswered call: answer, greeting, beep, record, caller hangs up"
 call silent; settle 30
 expect "T1 armed" "session armed"
 expect "T1 answered by app" "session: answering after"
-expect "T1 greeting into Telephony TX" "greeting played=.*routed=18"
+expect "T1 greeting + start beep as one clip into Telephony TX" "greeting\+beep played=.*routed=18"
 expect "T1 recording" "session: recording$"
 expect "T1 stopped on hang-up" "recording stopped \(caller hung up\)"
 
@@ -56,6 +56,14 @@ expect "T13 greeting played" "greeting played="
 expect "T13 app hung up" "session: disconnecting"
 expect_not "T13 no recording" "session: recording"
 $B allow_messages --ez value true >/dev/null; sleep 1
+
+echo "== Message limit: stop at the limit, two end beeps, the app hangs up"
+$B max_message --ei value 10 >/dev/null; sleep 1
+call stay; settle 32
+expect "stopped at the limit" "recording stopped \(max length\) duration=10000ms"
+expect "end beeps into Telephony TX" "end beeps played=650ms.*routed=18"
+expect "app hung up after the beeps" "session: disconnecting"
+$B max_message --ei value 30 >/dev/null; sleep 1
 
 echo "== Take over during the greeting"
 call message; sleep 10; $B take_over >/dev/null; sleep 3

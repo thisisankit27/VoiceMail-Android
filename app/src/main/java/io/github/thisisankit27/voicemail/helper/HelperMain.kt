@@ -47,6 +47,7 @@ import kotlin.math.sin
  */
 object HelperMain {
     private const val TAG = "VmHelper"
+    private const val LEAD_IN_MS = 500
     private lateinit var tokenHash: ByteArray
     private lateinit var apkPath: String
 
@@ -189,6 +190,16 @@ object HelperMain {
             val routed = track.routedDevice
             HelperProtocol.writeText(output, HelperProtocol.PLAY_STARTED, "tx=${tx?.id} routed=${routed?.type} '${routed?.productName}'")
             val started = SystemClock.elapsedRealtime()
+            // A silent lead-in: the HAL opens the in-call music path when the track starts, and
+            // audio written in that first moment can be lost. Short clips (the beep) were inaudible
+            // to callers without it.
+            val lead = ShortArray(rate * channels * LEAD_IN_MS / 1000)
+            var leadOffset = 0
+            while (leadOffset < lead.size && !stopped.get()) {
+                val w = track.write(lead, leadOffset, lead.size - leadOffset)
+                if (w < 0) break
+                leadOffset += w
+            }
             var offset = 0
             while (offset < pcm.size && !stopped.get()) {
                 val written = track.write(pcm, offset, minOf(2048, pcm.size - offset))

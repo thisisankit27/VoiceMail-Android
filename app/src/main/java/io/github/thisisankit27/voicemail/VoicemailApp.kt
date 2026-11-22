@@ -59,7 +59,7 @@ class VoicemailApp : Application() {
         AppLog.i("process started")
         notifier.createChannels()
         HelperWatchdog.schedule(this)
-        appScope.launch { recoverInterruptedRecordings(); voicemails.purgeDeleted() }
+        appScope.launch { settings.migrate(); recoverInterruptedRecordings(); voicemails.purgeDeleted() }
     }
 
     /** Reflects a helper start result in the status notification. */
