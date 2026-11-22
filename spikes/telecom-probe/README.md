@@ -37,6 +37,18 @@ adb shell telecom set-phone-account-disabled $P/.LoopbackConnectionService loopb
 ```
 `ProbeCommandReceiver` requires `android.permission.DUMP`, which the ADB shell holds and third-party apps cannot get.
 
+## Shell-identity audio helper (Option 4, personal build)
+`ShellAudioMain` is a command-line program, not an app component. It runs as the **ADB shell user (uid 2000)**, which holds `CAPTURE_AUDIO_OUTPUT` and `MODIFY_PHONE_STATE` on the G60. No root is needed.
+```bash
+APK=$(adb shell pm path io.github.thisisankit27.voicemail.probe | head -1 | cut -d: -f2 | tr -d '\r')
+SH="adb shell CLASSPATH=$APK app_process /system/bin io.github.thisisankit27.voicemail.probe.ShellAudioMain"
+$SH devices                                   # Telephony Tx/Rx show up as type 18
+$SH capture 3 20 /data/local/tmp/downlink.wav # VOICE_DOWNLINK (3), VOICE_UPLINK (2), VOICE_CALL (4), MIC (1)
+$SH play /data/local/tmp/greeting.wav 2       # into the call uplink (Telephony TX)
+$SH tone 600                                  # beep into the call
+```
+The real-call experiment is one command: `scripts/realcall-shell-test.sh` (dry-run it with `LOOPBACK=1`).
+
 ## Drive it from ADB
 ```bash
 A="adb shell am start -n io.github.thisisankit27.voicemail.probe/.MainActivity --es probe_action"
@@ -49,6 +61,8 @@ $A set_auto_answer --ei value 20   # E2: answer after 20 s (0 = off)
 $A set_source --ei value 6         # E4: AudioSource constant (1 MIC, 5 CAMCORDER, 6 VOICE_RECOGNITION, 7 VOICE_COMMUNICATION, 9 UNPROCESSED)
 $A set_usage --ei value 2          # E3: AudioAttributes usage (1 MEDIA, 2 VOICE_COMMUNICATION, 16 ASSISTANT)
 $A set_speaker --ez value true
+$A set_app_greeting --ez value false   # leave call audio to the shell helper
+$A set_probe_capture --ez value false  # don't compete with a shell-helper capture
 ```
 Captured WAVs land in `/sdcard/Android/data/io.github.thisisankit27.voicemail.probe/files/captures/` (fetch them with `adb pull`). They are **gitignored and must never be committed**, because they can contain people's voices.
 

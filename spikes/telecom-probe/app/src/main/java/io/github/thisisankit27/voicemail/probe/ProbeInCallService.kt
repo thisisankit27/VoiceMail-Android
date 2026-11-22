@@ -129,6 +129,14 @@ class AutoAnswerSession(
             Call.STATE_ACTIVE -> if (answeredByProbe && !greetingStarted) {
                 greetingStarted = true
                 ProbeLog.i("E2 call ACTIVE at ${elapsed()} ms")
+                if (config.muteMicOnAnswer) {
+                    service.setMuted(true)
+                    ProbeLog.i("E11 microphone muted: the room is not sent to the caller")
+                }
+                if (!config.appGreetingEnabled) {
+                    ProbeLog.i("E11 app greeting disabled; shell helper drives call audio")
+                    return
+                }
                 if (config.speakerOnAnswer) service.routeToSpeaker(true)
                 // Give the route change a moment to settle before playing.
                 main.postDelayed({ playGreeting() }, 800)
@@ -153,6 +161,10 @@ class AutoAnswerSession(
 
     private fun startCapture() {
         if (call.stateCompat() != Call.STATE_ACTIVE) return
+        if (!config.probeCaptureEnabled) {
+            ProbeLog.i("E4 probe capture disabled (shell-identity experiment); call left open for the caller")
+            return
+        }
         val source = ProbeConfig.sourceName(config.captureSource)
         val file = File(CaptureProbe.captureDir(service), "call-$source-${System.currentTimeMillis()}.wav")
         capture = CaptureProbe(service, config.captureSource, file).also {

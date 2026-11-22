@@ -33,6 +33,21 @@ class ProbeConfig(context: Context) {
         get() = prefs.getInt("capture_s", 30)
         set(value) = prefs.edit().putInt("capture_s", value.coerceIn(5, 120)).apply()
 
+    /** E4/E11: when false, the app does not record after the beep (leaves the mic to a shell-identity capture). */
+    var probeCaptureEnabled: Boolean
+        get() = prefs.getBoolean("probe_capture", true)
+        set(value) = prefs.edit().putBoolean("probe_capture", value).apply()
+
+    /** E11: when false, the app plays no speaker greeting after answering (the shell helper drives call audio). */
+    var appGreetingEnabled: Boolean
+        get() = prefs.getBoolean("app_greeting", true)
+        set(value) = prefs.edit().putBoolean("app_greeting", value).apply()
+
+    /** E11: mute the phone's microphone when the probe answers, so the caller hears only the injected greeting. */
+    var muteMicOnAnswer: Boolean
+        get() = prefs.getBoolean("mute_on_answer", false)
+        set(value) = prefs.edit().putBoolean("mute_on_answer", value).apply()
+
     /** E10: when holding ROLE_CALL_SCREENING, reject every incoming call. */
     var screeningReject: Boolean
         get() = prefs.getBoolean("screen_reject", false)
@@ -40,7 +55,7 @@ class ProbeConfig(context: Context) {
 
     fun summary(): String =
         "autoAnswer=${autoAnswerSeconds}s speaker=$speakerOnAnswer usage=${usageName(greetingUsage)} " +
-            "source=${sourceName(captureSource)} capture=${captureSeconds}s screeningReject=$screeningReject"
+            "source=${sourceName(captureSource)} capture=${captureSeconds}s probeCapture=$probeCaptureEnabled appGreeting=$appGreetingEnabled muteOnAnswer=$muteMicOnAnswer screeningReject=$screeningReject"
 
     companion object {
         val USAGES = listOf(

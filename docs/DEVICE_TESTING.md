@@ -85,6 +85,22 @@ These use the throwaway `spikes/telecom-probe` app (PRs 02–05). Each row needs
 
 **Decision rule:** see [ADR-0001](decisions/ADR-0001-telephony-architecture.md). E3 and E4 decide the gate.
 
+### 4.2 Shell-identity experiments (personal build; Option 4)
+| ID | Question | Loopback result (2026-11-22) | Real call |
+|---|---|---|---|
+| **E11** | Can a uid-2000 helper play the greeting **into the call** (Telephony TX)? | Framework: ✅ `MODIFY_PHONE_STATE` granted, routed to type 18. HAL: ⚠️ `Invalid session id 0` (no modem session) | **Pending.** Run `spikes/telecom-probe/scripts/realcall-shell-test.sh` |
+| **E12** | Can a uid-2000 helper record the caller **from the call** (`VOICE_DOWNLINK`)? | ✅ initialised, recording, `silenced=false`. Audio zeros (no modem audio) | **Pending.** Same script |
+| E12b | Is uid-2000 MIC capture silenced during a call? | ✅ **Not silenced** (18 s live), unless the foreground app starts a newer capture | n/a |
+
+Evidence: [shell-identity log](device-logs/shell-identity-run-2026-11-22.md).
+
+**Real-call procedure:** a SIM in service, the probe as default dialer, USB adb. Run `RING=10 REC=20 spikes/telecom-probe/scripts/realcall-shell-test.sh <out-dir>`, then call the G60 from another phone and let it ring. The caller should hear the greeting and a beep *in the earpiece* (no speakerphone involved), speak for about 15 s, then hang up.
+- **E11 passes** if the caller hears the greeting clearly, `uplink-during-greeting.wav` contains it, **and no room audio reaches the caller.** The script mutes the G60 microphone on answer (`InCallService.setMuted(true)`; loopback check: `audio route=EARPIECE muted=true`). Test this by making noise near the G60 while the greeting plays. Then rerun with `MUTE=false` to see what would leak without the mute. Open question **[UNVERIFIED]**: does the Qualcomm in-call-music path still deliver while the mic is muted? If not, the fallback is to leave the mic live during the greeting only and mute it after the beep.
+- **Recording privacy:** the message is captured from `VOICE_DOWNLINK` (the caller's side only), so the G60's room audio is not in the voicemail. `voicecall.wav` (both directions) is recorded for comparison only.
+- **E12 passes** if `downlink.wav` contains the caller's speech.
+
+Recordings stay local and are deleted after analysis.
+
 ### 4.1 Loopback calls (network-free method)
 With no usable SIM, the probe's `LoopbackConnectionService` registers a managed calling account (`CAPABILITY_CALL_PROVIDER`) and injects incoming calls with `TelecomManager.addNewIncomingCall()`, which is a public API. Telecom handles these exactly like managed calls: the dialer's InCallService is bound and the audio mode becomes `MODE_IN_CALL` (verified with `dumpsys audio`).
 
@@ -135,5 +151,6 @@ These run against the **product app** once Phase 4 exists. They apply to spike b
 | Date | Build / commit | SIM / operator | Tests run | Summary | Link to logs (private) |
 |---|---|---|---|---|---|
 | 2026-11-22 | n/a | none (both slots ABSENT) | Baseline inspection only | See §1 | device-logs/ |
+| 2026-11-22 | probe 0.3 (`spike/shell-identity`) | none (loopback) | E11/E12 permission and policy layers, E12b | **Shell identity is allowed to play into TX and capture downlink. Audio flow needs a real call** | [shell-identity log](device-logs/shell-identity-run-2026-11-22.md) |
 | 2026-11-22 | probe 0.2 (`spike/loopback-calls`) | none needed (loopback calling account, network-free) | E1, E2 (app), E4, E5, E6 (app), Tests 4 and 10 (logic) | **E4 FAIL: all in-call capture silenced by the framework.** E1 and E5 pass | [loopback log](device-logs/loopback-run-2026-11-22.md) |
 | 2026-11-22 | probe 0.1 (`spike/telecom-probe`) | BSNL SIM in slot 2: `LOADED`, but CS/PS registration **DENIED**, "Emergency calls only". Owner reports the prepaid plan is not recharged | E7 (provisional pass), E4 no-call baseline, E1 prep | Calls cannot be received yet. See [device-logs/probe-run-2026-11-22-nosim.md](device-logs/probe-run-2026-11-22-nosim.md) | device-logs/ |

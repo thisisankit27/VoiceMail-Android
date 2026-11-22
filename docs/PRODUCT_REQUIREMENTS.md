@@ -21,9 +21,9 @@
 | **A. Automatic handling** | | |
 | A1 | Phone rings normally | ✅ Supported (app is dialer; standard ringing UI) |
 | A2 | After N s unanswered, voicemail takes over | 🔒 GATED. Answering is supported; timing depends on the carrier (E2) |
-| A3 | Caller hears greeting | 🔒 GATED. No API; acoustic path only (E3) |
+| A3 | Caller hears greeting | 🔒 GATED. Normal app: acoustic path only (E3). **Personal build:** directly into the call via Telephony TX if E11 passes (Option 4) |
 | A4 | Caller invited to leave message (tone) | 🔒 GATED (E3) |
-| A5 | Caller's message recorded | ❌ **Not possible on-device.** E4 failed: the framework silences all capture during calls (G60, 2026-11-22) |
+| A5 | Caller's message recorded | ❌ Not possible for a normal app (E4). ⚠️ **Personal build:** possible via the shell-identity helper if E12 passes on a real call (Option 4) |
 | A6 | Recording saved | ✅ once A5 works |
 | A7 | Ends on hang-up or max duration | ✅ `Call.disconnect()` and state callbacks |
 | **B. Greeting** | | |

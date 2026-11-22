@@ -18,7 +18,12 @@ The project owner has ruled out a cloud backend and paid telephony (2026-11-22).
 2. **(a)** Carrier voicemail with Visual Voicemail. This depends on the carrier and is likely unavailable in India. **(b)** Forwarding to a cloud telephony number. This is genuine and reliable, but needs a paid backend, so it is **excluded by the owner**.
 3. **CallScreeningService-only.** It can reject or silence calls, but cannot answer, play or record.
 
-## Decision (provisional)
+## Update, 2026-11-22: Option 4 (personal build)
+The owner decided the app is **personal use only, with no Play Store**, and asked for system-level audio **without root or a custom ROM**. Option 4 (see [TECHNICAL_FEASIBILITY §3](../TECHNICAL_FEASIBILITY.md#option-4-default-dialer--shell-identity-audio-helper-personal-build-only-owner-decision-2026-11-22)) uses the ADB shell identity, which holds `CAPTURE_AUDIO_OUTPUT` and `MODIFY_PHONE_STATE`. On loopback calls it passed every permission and policy layer for playing the greeting *into* the call (Telephony TX) and recording the caller *from* it (`VOICE_DOWNLINK`).
+
+**New gate:** on **one real call**, E11 (the caller hears the greeting played into TX; the uplink self-capture contains it) **and** E12 (the downlink capture contains the caller's speech) must pass. Then Option 4 becomes the architecture for the personal build. If either fails, the decision returns to the owner (stop or greeting-only).
+
+## Decision (provisional, original)
 Pursue **Option 1** as an **experimental, device-verified** feature, gated as follows:
 
 | E3: greeting audible to caller | E4: caller captured | Result |

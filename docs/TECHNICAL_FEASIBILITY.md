@@ -1,6 +1,6 @@
 # Technical Feasibility Report
 
-> **Status:** Phase 0. **The decisive experiment E4 has FAILED on the Moto G60** (network-free loopback calls, 2026-11-22). Desk research, the device inspection, E1, E5 and E7 (provisional) are done. The on-device call experiments (E2–E6, E9–E10) are **pending**, because no SIM is installed in the test device yet.
+> **Status:** Phase 0. **E4 FAILED for a normal app** (loopback, 2026-11-22). **New path:** for a *personal, non-Play* build, the owner approved running the audio code as the **ADB shell identity** (no root, no custom ROM). On loopback calls that identity passes every permission and policy layer for playing into the call and recording from it (E11/E12). **Whether audio actually flows needs one real call.** The on-device call experiments (E2–E6, E9–E10) are **pending**, because no SIM is installed in the test device yet.
 >
 > **Last updated:** 2026-11-22
 >
@@ -168,6 +168,21 @@ The user forwards no-reply, busy and unreachable calls to a virtual number from 
 - **Contact rules** must be enforced server-side. On-device, "always to voicemail" becomes a reject from `CallScreeningService`, which triggers busy-forwarding **[UNVERIFIED]**.
 
 **Rejected.** The owner ruled out anything paid, including in the case where E4 fails (2026-11-22).
+
+### Option 4: Default dialer + shell-identity audio helper (PERSONAL BUILD ONLY; owner decision 2026-11-22)
+The owner decided the app is for personal use with no Play Store, and asked for system-level powers **without root or a custom ROM**. Stock Android has one such privilege level: the **ADB shell user** (uid 2000), the identity `adb shell`, scrcpy and Shizuku run code under.
+
+| Aspect | Finding |
+|---|---|
+| **Mechanism** | The app keeps `ROLE_DIALER` for ringing, the timer, `answer()`, `disconnect()` and the UI. A helper process running as uid 2000 does the audio: an `AudioTrack` routed to the **Telephony TX** device (the HAL's `incall_music_uplink`) plays the greeting *into* the call, and an `AudioRecord` on `VOICE_DOWNLINK` records the caller *from* the call. No speakerphone. |
+| **Permissions** | uid 2000 holds `CAPTURE_AUDIO_OUTPUT`, `MODIFY_PHONE_STATE` and `CONTROL_INCALL_EXPERIENCE` on the G60 **[VERIFIED-DEVICE]**. `pm grant` of these to the app fails **[VERIFIED-DEVICE]**. |
+| **What is verified (loopback)** | Playback: `MODIFY_PHONE_STATE … uid=2000 => granted`, track routed to type 18 (Telephony). Capture: `VOICE_DOWNLINK` and `VOICE_CALL` initialise and record with `isClientSilenced=false`. Shell MIC capture is not silenced during the call **[VERIFIED-DEVICE, loopback]**. |
+| **What is not verified** | That audio *flows*. The HAL refused in-call music with `Invalid session id 0`, and the downlink was zeros, because a loopback call has no modem voice session. **→ E11/E12 on a real call.** **[UNVERIFIED]** |
+| **Running without a PC** | Android 11+ *Wireless debugging* lets an on-device launcher (Shizuku, Apache-2.0) start a uid-2000 process. It must be **restarted after every reboot**, and starting it needs Wi-Fi **[DOC-ASSUMPTION/UNVERIFIED on G60]**. Until then, the helper runs over USB `adb`. |
+| **Costs** | Not Play-distributable. Uses one hidden API (device lookup) and the shell identity, which is outside the normal app model. Anything holding the Shizuku grant has shell power. An OEM update could change what uid 2000 holds. It is device-specific (Qualcomm in-call music path). |
+| **Complexity** | Medium. Dialer (as Option 1), plus an AIDL-connected shell-side audio service, plus a re-arm flow after reboot. |
+
+Evidence: [shell-identity log](device-logs/shell-identity-run-2026-11-22.md).
 
 ### Option 3: Other Android-supported architectures
 | Candidate | Why it doesn't solve the problem |
