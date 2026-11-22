@@ -12,7 +12,7 @@ Technical claims in docs and PR descriptions carry an evidence label from [TECHN
 ## Device testing and privacy
 - Never commit device serials, IMEI, ICCID, phone numbers, cell IDs, call audio or transcripts of real people. The repository is public.
 - Never change a device's default dialer, call forwarding or carrier settings without writing down the user action and how to revert it.
-- No root, no Accessibility-service workarounds, no hidden or reflection-based APIs.
+- No root, no Accessibility-service workarounds, no hidden or reflection-based APIs. **Exception (owner decision, 2026-11-22):** the *personal build's* shell-identity audio helper (Option 4) may use the ADB shell identity and the minimum hidden API needed. It must stay isolated in that helper and is never distributed.
 
 ## Code standards (from PR-07 onward)
 - Kotlin with the official style, enforced by ktlint/detekt.
