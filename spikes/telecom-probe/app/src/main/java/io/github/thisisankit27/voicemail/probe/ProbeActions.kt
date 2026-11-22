@@ -20,7 +20,16 @@ object ProbeActions {
         when (action) {
             "status" -> ProbeLog.i("config: ${config.summary()} inCallServiceBound=${ProbeInCallService.instance != null}")
             "tts_voices" -> TtsProbe.run(context, render = null)
-            "render_greeting" -> TtsProbe.run(context, render = TtsProbe.Render.GREETING)
+            "render_greeting" -> TtsProbe.run(
+                context,
+                render = TtsProbe.Render.GREETING,
+                style = TtsProbe.Style(
+                    voiceName = intent.getStringExtra("voice"),
+                    pitch = if (intent.hasExtra("pitch")) intent.getFloatExtra("pitch", 1f) else null,
+                    rate = if (intent.hasExtra("rate")) intent.getFloatExtra("rate", 1f) else null,
+                ),
+            )
+            "render_voice_samples" -> TtsProbe.renderSamples(context)
             "render_caller" -> TtsProbe.run(context, render = TtsProbe.Render.CALLER)
             "play_greeting" -> GreetingPlayer(context, config.greetingUsage).let { p -> p.play { p.beep { p.release() } } }
             "mic_baseline_all" -> micBaselineAll(context)
