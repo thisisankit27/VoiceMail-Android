@@ -4,7 +4,7 @@ Likelihood (L) and Impact (I) are rated 1–5. Score = L × I.
 
 | ID | Risk | L | I | Score | Mitigation | Trigger / signal | Owner |
 |---|---|---|---|---|---|---|---|
-| R1 | **Caller audio capture is silenced for non-privileged apps** (E4 fails), so no on-device voicemail is possible | 5 | 5 | **25** | Run E4 first, before any product telephony work. Escalation options are pre-defined in ADR-0001 (stop, greeting-only, cloud forwarding) | E4 RMS ≈ 0 / AudioFlinger "silenced" logs | Owner |
+| R1 | **REALISED 2026-11-22.** **Caller audio capture is silenced for non-privileged apps** (E4 fails), so no on-device voicemail is possible | 5 | 5 | **25** | Run E4 first, before any product telephony work. Escalation options are pre-defined in ADR-0001 (stop, greeting-only, cloud forwarding) | E4 RMS ≈ 0 / AudioFlinger "silenced" logs | Owner |
 | R2 | **The greeting is not audible to the caller** (AEC removes it) (E3 fails) | 4 | 5 | **20** | Try three `AudioAttributes` usages and volume levels. Document per device | E3 transcription < 90% | Eng |
 | R3 | Replacing the default dialer degrades the user's everyday calling (bugs, missing features) | 4 | 5 | **20** | Keep the dialer minimal but correct. Regression suite on every telephony PR. Clear revert instructions. Emergency calls stay with the system | Any failure in Tests 2–4 | Eng |
 | R4 | Carrier no-reply forwarding or network timeout pre-empts the app's timer | 4 | 3 | 12 | Measure in E2. Warn in setup. Default ring time below the measured timeout | E2 timings | Eng |

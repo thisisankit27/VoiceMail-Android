@@ -1,6 +1,6 @@
 # Technical Feasibility Report
 
-> **Status:** Phase 0, in progress. Desk research, the read-only device inspection, E7 (provisional) and the E4 no-call baseline are done. The on-device call experiments (E2–E6, E9–E10) are **pending**, because no SIM is installed in the test device yet.
+> **Status:** Phase 0. **The decisive experiment E4 has FAILED on the Moto G60** (network-free loopback calls, 2026-11-22). Desk research, the device inspection, E1, E5 and E7 (provisional) are done. The on-device call experiments (E2–E6, E9–E10) are **pending**, because no SIM is installed in the test device yet.
 >
 > **Last updated:** 2026-11-22
 >
@@ -24,6 +24,8 @@ Every important claim in this repository is tagged with one of these labels.
 ---
 
 ## 1. Executive verdict
+
+> **Device finding, 2026-11-22 [VERIFIED-DEVICE, loopback]:** Even while holding `ROLE_DIALER`, with `RECORD_AUDIO`, a `phoneCall|microphone` foreground service and a visible in-call screen, the app receives **only digital silence** from every capture source (`MIC`, `VOICE_RECOGNITION`, `VOICE_COMMUNICATION`, `CAMCORDER`, `UNPROCESSED`) once the call is active. Android reports this explicitly: `AudioRecordingConfiguration.isClientSilenced() == true`. A recording that was already running is silenced the moment the call becomes active. **No caller audio can be recorded on-device by this app. Recording voicemail on-device is therefore not possible on the G60.** The test used network-free calls that Telecom puts into `MODE_IN_CALL`, which is what the capture policy keys on. A single real-call confirmation is still advised. Evidence: [loopback log](device-logs/loopback-run-2026-11-22.md).
 
 **Android's public APIs do not support a genuine, reliable on-device cellular voicemail for a third-party app.**
 
@@ -96,7 +98,7 @@ The eight capabilities are independent. Supporting one does not imply supporting
 | **Official API** | `AudioSource.VOICE_DOWNLINK` / `VOICE_CALL` require `CAPTURE_AUDIO_OUTPUT`, which is "not available to third-party applications" **[VERIFIED-DOC]**. `AudioPlaybackCaptureConfiguration` captures **only** `USAGE_MEDIA`, `USAGE_GAME` and `USAGE_UNKNOWN`; "All other usages CAN NOT be captured" **[VERIFIED-DOC]** ([link](https://developer.android.com/reference/android/media/AudioPlaybackCaptureConfiguration)). |
 | **Concurrent capture policy** | While a call is active, the only exceptions listed are an **accessibility service** and a "**privileged (pre-installed) app** with permission CAPTURE_AUDIO_OUTPUT" **[VERIFIED-DOC]** ([sharing-audio-input](https://developer.android.com/media/platform/sharing-audio-input)). An ordinary app, including a non-system default dialer, is **not** listed. The page does not say whether such an app receives silence or an error. |
 | **Accessibility route** | Forbidden by project rules. Google Play has also banned it for call recording since 2022-05-11: "the Accessibility API is not designed and cannot be requested for remote call audio recording" **[VERIFIED-DOC, secondary report]**. |
-| **Acoustic route** | Put the call on speakerphone and record `MIC` / `VOICE_RECOGNITION` / `UNPROCESSED`. This is undocumented, and the policy above suggests the capture will be **silenced** **[UNVERIFIED]**. **E4 is the decisive experiment.** |
+| **Acoustic route** | Put the call on speakerphone and record `MIC` / `VOICE_RECOGNITION` / `UNPROCESSED`. **Tested: silenced.** All five sources return 100% zeros with `isClientSilenced=true` during an active call, including a capture started before the call **[VERIFIED-DEVICE, E4 loopback]**. |
 | **Feasibility** | ❌ Not supported. The acoustic path is a device-dependent workaround at best. |
 
 ### 2.5 Playing an audio greeting into the cellular call
@@ -109,7 +111,7 @@ The eight capabilities are independent. Supporting one does not imply supporting
 ### 2.6 Recording the caller's voice
 This is the same problem as 2.4. Microphone permission (`RECORD_AUDIO`) is **not** permission to record cellular call audio. The two must not be confused. Starting a `microphone` foreground service from the background is also restricted: "you cannot create a `microphone` foreground service while your app is in the background" **[VERIFIED-DOC]** ([FGS types](https://developer.android.com/develop/background-work/services/fgs/service-types)). Whether the dialer's in-call UI makes the app "foreground" while the phone is locked and unattended is **[UNVERIFIED]**, tested in E5.
 
-**Verdict:** ❌ Not supported via any documented API.
+**Verdict:** ❌ Not supported via any documented API, and **verified impossible on the G60**: the framework silences the capture (E4).
 
 ### 2.7 Disconnecting the call
 | | |
@@ -200,12 +202,12 @@ Full procedures are in [DEVICE_TESTING.md](DEVICE_TESTING.md).
 
 | ID | Question | Needs SIM? | Status |
 |---|---|---|---|
-| E1 | Can the spike obtain `ROLE_DIALER` and be bound as InCallService on the G60? | No | Pending |
-| E2 | Ring detection, app timer, `answer()`. What is the network's no-answer timeout per operator? | Yes + 2nd phone | Pending |
+| E1 | Can the spike obtain `ROLE_DIALER` and be bound as InCallService on the G60? | No | **Pass** |
+| E2 | Ring detection, app timer, `answer()`. What is the network's no-answer timeout per operator? | Yes + 2nd phone | Partial: app timer and answer verified by loopback; network timeout pending |
 | E3 | Does the caller hear a greeting played through the speaker during the call? With which `AudioAttributes` usage? | Yes + 2nd phone | Pending |
-| E4 | Does `AudioRecord` capture the caller's voice (speaker → mic) during the call, per audio source? Silence or signal? | Yes + 2nd phone | Pending. The no-call baseline is recorded: all sources live, not silenced |
-| E5 | Can capture start while the device is locked and unattended, with the app in background before the call? | Yes + 2nd phone | Pending |
-| E6 | Disconnect, call-log entry and caller-side experience (billing, what they hear) | Yes + 2nd phone | Pending |
+| E4 | Does `AudioRecord` capture the caller's voice (speaker → mic) during the call, per audio source? Silence or signal? | Yes + 2nd phone | **FAIL**: every source silenced during the call (loopback) |
+| E5 | Can capture start while the device is locked and unattended, with the app in background before the call? | Yes + 2nd phone | **Pass** (call flow while locked; capture still silenced) |
+| E6 | Disconnect, call-log entry and caller-side experience (billing, what they hear) | Yes + 2nd phone | Partial: app-side disconnect verified; caller view pending |
 | E7 | Which Google TTS voices work offline? Quality of `synthesizeToFile` | No | **Pass (provisional)**: 4 en-IN and 4 hi-IN offline voices installed. Greeting rendered in 1.2 s. Wi-Fi-off rerun pending |
 | E8 | STT benchmark: whisper.cpp vs Vosk on the G60 (real-time factor, word error rate on Indian English and Hindi, size) | No | Pending |
 | E9 | Carrier forwarding status, operator voicemail and VVM, per SIM | Yes | Pending |

@@ -13,9 +13,20 @@ object TtsProbe {
         "Hello! You've reached the voicemail probe. I'm unable to answer your call right now. " +
             "Please leave a message after the tone."
 
+    /** Spoken by the loopback "caller" (proxy downlink), in a different voice from the greeting. */
+    const val CALLER =
+        "Hi, this is a simulated caller from the loopback test. I am leaving a test message. " +
+            "Please call me back when you are free. Thank you, bye."
+
+    enum class Render(val text: String, val preferredVoice: String) {
+        GREETING(TtsProbe.GREETING, "en-in-x-enc-local"),
+        CALLER(TtsProbe.CALLER, "en-in-x-end-local"),
+    }
+
     private val interesting = listOf(Locale("en", "IN"), Locale("hi", "IN"), Locale.US, Locale.UK)
 
-    fun run(context: Context, render: Boolean) {
+    /** [render] null = only report the voice inventory. */
+    fun run(context: Context, render: Render?) {
         val app = context.applicationContext
         var holder: TextToSpeech? = null
         holder = TextToSpeech(app) { status ->
@@ -26,7 +37,7 @@ object TtsProbe {
                 return@TextToSpeech
             }
             report(tts)
-            if (render) renderGreeting(app, tts) else tts.shutdown()
+            if (render != null) render(app, tts, render) else tts.shutdown()
         }
     }
 
@@ -51,9 +62,10 @@ object TtsProbe {
         }
     }
 
-    private fun renderGreeting(context: Context, tts: TextToSpeech) {
+    private fun render(context: Context, tts: TextToSpeech, what: Render) {
         val voices = tts.voices.orEmpty()
-        val voice = voices.filter { it.offline() && it.locale == Locale("en", "IN") }.maxByOrNull { it.quality }
+        val voice = voices.firstOrNull { it.offline() && it.name == what.preferredVoice }
+            ?: voices.filter { it.offline() && it.locale == Locale("en", "IN") }.maxByOrNull { it.quality }
             ?: voices.filter { it.offline() && it.locale.language == "en" }.maxByOrNull { it.quality }
         if (voice == null) {
             ProbeLog.i("E7 no offline English voice installed; cannot render greeting offline")
@@ -61,13 +73,13 @@ object TtsProbe {
             return
         }
         tts.voice = voice
-        val file = GreetingPlayer.greetingFile(context)
+        val file = if (what == Render.GREETING) GreetingPlayer.greetingFile(context) else LoopbackConnection.callerFile(context)
         val started = System.currentTimeMillis()
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) = Unit
 
             override fun onDone(utteranceId: String?) {
-                ProbeLog.i("E7 rendered greeting voice=${voice.name} bytes=${file.length()} in ${System.currentTimeMillis() - started} ms")
+                ProbeLog.i("E7 rendered ${what.name.lowercase()} voice=${voice.name} bytes=${file.length()} in ${System.currentTimeMillis() - started} ms")
                 tts.shutdown()
             }
 
@@ -82,7 +94,7 @@ object TtsProbe {
                 tts.shutdown()
             }
         })
-        val result = tts.synthesizeToFile(GREETING, Bundle(), file, "greeting")
+        val result = tts.synthesizeToFile(what.text, Bundle(), file, what.name)
         ProbeLog.i("E7 synthesizeToFile queued result=$result voice=${voice.name}")
     }
 }

@@ -23,6 +23,20 @@ adb install -r -g app/build/outputs/apk/debug/app-debug.apk
 adb logcat -s TelecomProbe            # every experiment step is logged here
 ```
 
+## Loopback calls (no SIM, no network)
+`LoopbackConnectionService` is a managed calling account. `fake_incoming` injects an incoming call through `TelecomManager.addNewIncomingCall()`. Telecom rings it, binds the probe's InCallService, and switches to `MODE_IN_CALL`, exactly as it does for a carrier call. There is no far end, so E3 (does the caller hear the greeting?) **cannot** be tested this way. See [DEVICE_TESTING §4.1](../../docs/DEVICE_TESTING.md#41-loopback-calls-network-free-method).
+```bash
+P=io.github.thisisankit27.voicemail.probe
+B="adb shell am broadcast -n $P/.ProbeCommandReceiver --es probe_action"   # works while locked / in background
+$B register_loopback
+adb shell telecom set-phone-account-enabled  $P/.LoopbackConnectionService loopback 0
+$B render_caller
+$B fake_incoming --es scenario message          # | hangup_ringing | silent
+$B capture_long --ei value 40                   # capture started before a call (loophole check)
+adb shell telecom set-phone-account-disabled $P/.LoopbackConnectionService loopback 0   # revert
+```
+`ProbeCommandReceiver` requires `android.permission.DUMP`, which the ADB shell holds and third-party apps cannot get.
+
 ## Drive it from ADB
 ```bash
 A="adb shell am start -n io.github.thisisankit27.voicemail.probe/.MainActivity --es probe_action"

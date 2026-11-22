@@ -34,14 +34,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.io.File
-import kotlin.concurrent.thread
 
 /**
  * Control panel for the Phase 0 experiments. Every action can also be driven over ADB so runs are
  * reproducible:  adb shell am start -n io.github.thisisankit27.voicemail.probe/.MainActivity --es probe_action <action>
- * Actions: status, tts_voices, render_greeting, play_greeting, mic_baseline_all,
- *          set_auto_answer (--ei value N), set_source (--ei value N), set_usage (--ei value N), set_speaker (--ez value B)
+ * The action list lives in [ProbeActions]; spikes/telecom-probe/README.md documents it.
  */
 class MainActivity : ComponentActivity() {
     private val refresh = mutableIntStateOf(0)
@@ -73,24 +70,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handle(intent: Intent?) {
-        if (intent == null) return
-        val action = intent.getStringExtra("probe_action") ?: return
-        val config = ProbeConfig(this)
-        ProbeLog.i("adb action: $action")
-        when (action) {
-            "status" -> logStatus()
-            "tts_voices" -> TtsProbe.run(this, render = false)
-            "render_greeting" -> TtsProbe.run(this, render = true)
-            "play_greeting" -> playGreetingLocally()
-            "mic_baseline_all" -> micBaselineAll()
-            "set_auto_answer" -> config.autoAnswerSeconds = intent.getIntExtra("value", 0)
-            "set_source" -> config.captureSource = intent.getIntExtra("value", config.captureSource)
-            "set_usage" -> config.greetingUsage = intent.getIntExtra("value", config.greetingUsage)
-            "set_speaker" -> config.speakerOnAnswer = intent.getBooleanExtra("value", true)
-            else -> ProbeLog.i("unknown probe_action")
-        }
-        if (action.startsWith("set_")) ProbeLog.i("config: ${config.summary()}")
-        refresh.intValue++
+        if (intent != null && ProbeActions.run(this, intent)) refresh.intValue++
     }
 
     private fun roleManager() = getSystemService(RoleManager::class.java)
@@ -115,25 +95,6 @@ class MainActivity : ComponentActivity() {
         }
         ProbeLog.i("E1 requesting $role (user must confirm the system dialog)")
         roleRequest.launch(roles.createRequestRoleIntent(role))
-    }
-
-    private fun playGreetingLocally() {
-        val player = GreetingPlayer(this, ProbeConfig(this).greetingUsage)
-        player.play { player.beep { player.release() } }
-    }
-
-    /** E4 baseline: the noise floor and silencing state of every source with no call active. */
-    private fun micBaselineAll() {
-        thread(name = "baseline") {
-            for (source in ProbeConfig.SOURCES) {
-                val name = ProbeConfig.sourceName(source)
-                val file = File(CaptureProbe.captureDir(this), "baseline-$name.wav")
-                val done = java.util.concurrent.CountDownLatch(1)
-                CaptureProbe(this, source, file).start(3, "E4(baseline)") { done.countDown() }
-                done.await()
-            }
-            ProbeLog.i("E4(baseline) all sources done")
-        }
     }
 
     @Composable
@@ -188,15 +149,33 @@ class MainActivity : ComponentActivity() {
             item {
                 Text("No-SIM experiments", style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { TtsProbe.run(this@MainActivity, render = false) }) { Text("List TTS voices (E7)") }
-                    OutlinedButton(onClick = { TtsProbe.run(this@MainActivity, render = true) }) { Text("Render greeting (E7)") }
-                    OutlinedButton(onClick = { playGreetingLocally() }) { Text("Play greeting") }
-                    OutlinedButton(onClick = { micBaselineAll() }) { Text("Mic baseline, all sources") }
+                    OutlinedButton(onClick = { act("tts_voices") }) { Text("List TTS voices (E7)") }
+                    OutlinedButton(onClick = { act("render_greeting") }) { Text("Render greeting (E7)") }
+                    OutlinedButton(onClick = { act("render_caller") }) { Text("Render caller clip") }
+                    OutlinedButton(onClick = { act("play_greeting") }) { Text("Play greeting") }
+                    OutlinedButton(onClick = { act("mic_baseline_all") }) { Text("Mic baseline, all sources") }
+                }
+            }
+            item { HorizontalDivider() }
+            item {
+                Text("Loopback calls (no network; E3 not testable)", style = MaterialTheme.typography.titleSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { act("register_loopback") }) { Text("Register loopback account") }
+                    Button(onClick = { act("fake_incoming") }) { Text("Fake call: leaves message") }
+                    OutlinedButton(onClick = { act("fake_incoming", "hangup_ringing") }) { Text("Fake call: hangs up ringing") }
+                    OutlinedButton(onClick = { act("fake_incoming", "silent") }) { Text("Fake call: silent") }
                 }
             }
             item { HorizontalDivider(); Text("Timeline (newest first)", style = MaterialTheme.typography.titleSmall) }
             items(lines) { Text(it, fontFamily = FontFamily.Monospace, fontSize = 11.sp) }
         }
+    }
+
+    private fun act(action: String, scenario: String? = null) {
+        val intent = Intent().putExtra("probe_action", action)
+        if (scenario != null) intent.putExtra("scenario", scenario)
+        ProbeActions.run(this, intent)
+        refresh.intValue++
     }
 
     @Composable

@@ -79,6 +79,22 @@
             </intent-filter>
         </service>
 
+        <!-- Network-free calling account for loopback experiments (no modem, no carrier). -->
+        <service
+            android:name=".LoopbackConnectionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.ConnectionService" />
+            </intent-filter>
+        </service>
+
+        <!-- ADB command channel. DUMP is held by the shell, not by third-party apps. -->
+        <receiver
+            android:name=".ProbeCommandReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
+
         <!-- Foreground service held while a call exists. Whether it may start is itself data (E5). -->
         <service
             android:name=".ProbeCallService"

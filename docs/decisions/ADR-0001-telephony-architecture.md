@@ -1,6 +1,6 @@
 # ADR-0001: Telephony architecture
 
-- **Status:** **PROVISIONAL.** This decision is blocked on the Phase 0 experiments E1–E6 and E9–E10. It is finalised in PR-06.
+- **Status:** **GATE FAILED ON E4, awaiting the owner's decision.** On 2026-11-22, loopback calls on the Moto G60 showed that every capture source is silenced by the framework during an active call ([log](../device-logs/loopback-run-2026-11-22.md)). On-device voicemail *recording* is therefore impossible on this device. Per the table below, the best outcome is a **greeting-only auto-responder**, and only if E3 passes on a real call. Option 2b stays excluded ("nothing paid"). The owner chooses: **stop**, or **build the greeting-only product** (which still needs E3 on a real call).
 - **Date:** 2026-11-22
 - **Deciders:** Project owner, with the planning author
 - **Evidence:** [TECHNICAL_FEASIBILITY.md](../TECHNICAL_FEASIBILITY.md), [TELEPHONY_RESEARCH.md](../TELEPHONY_RESEARCH.md)
