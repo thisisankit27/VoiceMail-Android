@@ -21,7 +21,7 @@ The project owner has ruled out a cloud backend and paid telephony (2026-11-22).
 ## Update, 2026-11-22: Option 4 (personal build)
 The owner decided the app is **personal use only, with no Play Store**, and asked for system-level audio **without root or a custom ROM**. Option 4 (see [TECHNICAL_FEASIBILITY §3](../TECHNICAL_FEASIBILITY.md#option-4-default-dialer--shell-identity-audio-helper-personal-build-only-owner-decision-2026-11-22)) uses the ADB shell identity, which holds `CAPTURE_AUDIO_OUTPUT` and `MODIFY_PHONE_STATE`. On loopback calls it passed every permission and policy layer for playing the greeting *into* the call (Telephony TX) and recording the caller *from* it (`VOICE_DOWNLINK`).
 
-**New gate:** on **one real call**, E11 (the caller hears the greeting played into TX; the uplink self-capture contains it) **and** E12 (the downlink capture contains the caller's speech) must pass. Then Option 4 becomes the architecture for the personal build. If either fails, the decision returns to the owner (stop or greeting-only).
+**Gate result (2026-11-22, Airtel real call): E11 PASS, E12 PASS (provisional; awaiting the owner's listening confirmation).** Option 4 is therefore the **proposed architecture for the personal build**, pending that confirmation. Original gate text: on **one real call**, E11 (the caller hears the greeting played into TX; the uplink self-capture contains it) **and** E12 (the downlink capture contains the caller's speech) must pass. Then Option 4 becomes the architecture for the personal build. If either fails, the decision returns to the owner (stop or greeting-only).
 
 ## Decision (provisional, original)
 Pursue **Option 1** as an **experimental, device-verified** feature, gated as follows:
