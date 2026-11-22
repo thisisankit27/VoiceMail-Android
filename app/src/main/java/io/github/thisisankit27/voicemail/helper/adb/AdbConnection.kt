@@ -123,6 +123,21 @@ class AdbConnection private constructor(
             return conn
         }
 
+        /** True if [port] on 127.0.0.1 is adbd's Wireless debugging server (answers CNXN with STLS). */
+        fun answersTls(port: Int): Boolean = try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress("127.0.0.1", port), 500)
+                socket.soTimeout = 1_000
+                socket.getOutputStream().apply {
+                    write(Message(A_CNXN, A_VERSION, MAX_PAYLOAD, "host::\u0000".toByteArray()).encode())
+                    flush()
+                }
+                Message.read(DataInputStream(BufferedInputStream(socket.getInputStream()))).command == A_STLS
+            }
+        } catch (_: Exception) {
+            false
+        }
+
         private fun AdbConnection.handshake(host: String, port: Int, key: AdbKey, promptTimeoutMs: Int, onKeyPrompt: () -> Unit) {
             write(Message(A_CNXN, A_VERSION, MAX_PAYLOAD, "host::features=shell_v2,cmd\u0000".toByteArray()))
             var signed = false

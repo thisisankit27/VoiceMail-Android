@@ -105,7 +105,16 @@ fun SetupScreen(onBack: (() -> Unit)?, onOpenGreeting: () -> Unit) {
                 }) { Text("Allow") }
             }
 
-            Step(3, "Authorise the audio helper (once)", s.keyAuthorized,
+            Step(3, "Let it run in the background", s.batteryUnrestricted,
+                "Set battery use to Unrestricted. Without it, Android stops the app from reaching the audio helper while the app isn't open, so calls after a reboot would ring out. Starting the helper also sets this for you.") {
+                Button(onClick = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }) { Text("Allow") }
+            }
+
+            Step(4, "Authorise the audio helper (once)", s.keyAuthorized,
                 "The audio helper is what plays your greeting into the call and records the caller. The app starts it by itself over Wireless debugging. " +
                     "It needs a one-time OK from you, given from a computer over USB:") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -118,7 +127,7 @@ fun SetupScreen(onBack: (() -> Unit)?, onOpenGreeting: () -> Unit) {
 
             HelperStep(s, helperBusy) { scope.launch { app.onHelperStatus(app.helper.ensureRunning("setup")) } }
 
-            Step(5, "Choose your greeting", s.greetingReady,
+            Step(6, "Choose your greeting", s.greetingReady,
                 "Callers hear it before the tone. Pick a voice and add your name. You can also record it in your own voice.") {
                 OutlinedButton(onClick = onOpenGreeting) { Text("Set up greeting") }
             }
@@ -149,7 +158,7 @@ fun SetupScreen(onBack: (() -> Unit)?, onOpenGreeting: () -> Unit) {
             Text(
                 "• Your carrier may forward unanswered calls to its own voicemail before this app answers. If that happens, turn off \"forward when unanswered\" with your carrier, or shorten the ring time.\n" +
                     "• After a reboot, unlock the phone once and connect to Wi-Fi. The helper then starts by itself.\n" +
-                    "• Keep battery usage for this app on \"Unrestricted\" so the helper restarts promptly.",
+                    "• If you ever reset battery usage to Optimised, step 3 turns red again.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             OutlinedButton(onClick = {
@@ -168,7 +177,7 @@ private fun HelperStep(s: SetupSnapshot, busy: Boolean, onStart: () -> Unit) {
         is HelperStatus.Stopped -> VoicemailApp.describe(h)
         HelperStatus.Unknown -> "Checking…"
     }
-    Step(4, "Audio helper", running, body) {
+    Step(5, "Audio helper", running, body) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(enabled = !busy, onClick = onStart) { Text(if (s.helper is HelperStatus.Stopped) "Start helper" else "Check again") }
             if (busy) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)

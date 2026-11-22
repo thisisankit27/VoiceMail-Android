@@ -8,7 +8,7 @@ adb shell am broadcast -n "$P/.debug.DebugCommandReceiver" --es cmd init >/dev/n
 APK=$(adb shell pm path "$P" | head -1 | cut -d: -f2 | tr -d '\r')
 TOKEN=$(adb shell run-as "$P" cat shared_prefs/helper.xml | grep -oP '(?<=name="token">)[^<]+')
 [ -n "$TOKEN" ] || { echo "no helper secret yet; open the app once"; exit 1; }
-adb shell "pm grant $P android.permission.WRITE_SECURE_SETTINGS 2>&1; pkill vm-audio-helper 2>/dev/null; sleep 0.3; \
+adb shell "pm grant $P android.permission.WRITE_SECURE_SETTINGS 2>&1; dumpsys deviceidle whitelist +$P >/dev/null 2>&1; pkill vm-audio-helper 2>/dev/null; sleep 0.3; \
   VM_HELPER_TOKEN=$TOKEN CLASSPATH='$APK' setsid app_process /system/bin --nice-name=vm-audio-helper \
   io.github.thisisankit27.voicemail.helper.HelperMain </dev/null >/dev/null 2>&1 & sleep 0.5; echo launched"
 sleep 1

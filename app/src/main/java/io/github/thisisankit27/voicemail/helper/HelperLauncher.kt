@@ -141,15 +141,17 @@ class HelperLauncher(private val context: Context) {
         }
         try {
             _status.value = HelperStatus.Starting("Finding Wireless debugging port")
-            var port = AdbPortFinder.findTlsPort(context, 15_000)
-            if (port == null && switchedOn) {
-                // Seen once right after an app update: adbd never announced the port. Restarting
-                // Wireless debugging makes it announce again.
-                AppLog.i("no Wireless debugging port yet; restarting Wireless debugging once")
+            // Up to 4 tries of 8 s. Between tries Wireless debugging is restarted so adbd announces
+            // its port again: right after a boot (G05) mdnsd isn't running for the first announcement.
+            var port: Int? = null
+            for (attempt in 1..PORT_ATTEMPTS) {
+                port = AdbPortFinder.findTlsPort(context, PORT_WAIT_MS)
+                if (port != null || !switchedOn || attempt == PORT_ATTEMPTS) break
+                AppLog.i("no Wireless debugging port yet (try $attempt); restarting Wireless debugging")
+                _status.value = HelperStatus.Starting("Restarting Wireless debugging (try ${attempt + 1})")
                 Settings.Global.putInt(context.contentResolver, ADB_WIFI_ENABLED, 0)
                 delay(1_000)
                 Settings.Global.putInt(context.contentResolver, ADB_WIFI_ENABLED, 1)
-                port = AdbPortFinder.findTlsPort(context, 15_000)
             }
             port ?: return HelperStatus.Stopped(
                     if (onWifi()) HelperStatus.Problem.WIRELESS_DEBUGGING_UNAVAILABLE else HelperStatus.Problem.NO_WIFI,
@@ -198,12 +200,17 @@ class HelperLauncher(private val context: Context) {
 
     /**
      * Shell command run as uid 2000. It also (re)grants WRITE_SECURE_SETTINGS, which the app needs
-     * to switch Wireless debugging on by itself after the next reboot.
+     * to switch Wireless debugging on by itself after the next reboot, and exempts the app from
+     * battery optimisation.
      */
     fun launchCommand(): String {
         val pkg = context.packageName
         val main = HelperMain::class.java.name
+        // Battery "Unrestricted" (power-save allowlist): on Android 15 the background firewall
+        // otherwise blocks the app's loopback socket to the helper whenever the app has no running
+        // component, e.g. right after a reboot (seen on the G05).
         return "pm grant $pkg android.permission.WRITE_SECURE_SETTINGS 2>&1; " +
+            "dumpsys deviceidle whitelist +$pkg >/dev/null 2>&1; " +
             "pkill ${HelperProtocol.PROCESS_NAME} 2>/dev/null; sleep 0.3; " +
             "${HelperProtocol.TOKEN_ENV}=$token CLASSPATH='${apkPath()}' " +
             "setsid app_process /system/bin --nice-name=${HelperProtocol.PROCESS_NAME} $main " +
@@ -254,6 +261,8 @@ class HelperLauncher(private val context: Context) {
         private const val KEY_TURN_OFF = "turn_off_wireless_debugging"
         private const val KEY_LAST_START = "last_start"
         private const val KEY_LAST_ADB = "last_adb"
+        private const val PORT_ATTEMPTS = 4
+        private const val PORT_WAIT_MS = 8_000L
         private const val KEY_REFRESH_MS = 5L * 24 * 60 * 60 * 1000
     }
 }

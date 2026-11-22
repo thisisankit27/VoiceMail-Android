@@ -132,7 +132,7 @@ class InCallActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    /** Screen off at the ear: only during a normal call on the earpiece. */
+    /** Screen off at the ear (proximity sensor), screen back on when the phone moves away. */
     private fun setProximity(on: Boolean) {
         val lock = proximity ?: return
         if (on && !lock.isHeld) lock.acquire(4 * 60 * 60 * 1000L)
@@ -159,7 +159,9 @@ class InCallActivity : ComponentActivity() {
         val main = if (waiting != null) foreground else (ringing ?: foreground)
 
         LaunchedEffect(main?.phase, main?.voicemail, audio.route) {
-            setProximity(main?.phase == CallPhase.ACTIVE && main.voicemail == null && audio.route == AudioRoute.EARPIECE)
+            // Screen off at the ear whenever a call is live on the earpiece: a normal call, after Take
+            // over, and while listening in to the voicemail on the earpiece.
+            setProximity(main?.phase == CallPhase.ACTIVE && audio.route == AudioRoute.EARPIECE)
         }
 
         Box(
