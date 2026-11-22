@@ -55,7 +55,7 @@ VoiceMail-Android/
 
 The modules are deliberately coarse. `voicemail` and `settings` from the original brief are folded into `core:*` and `feature:*`, because neither has independent logic. **A module only exists if something consumes it.**
 
-Package root: `dev.ankit.voicemail.<module>`, for example `dev.ankit.voicemail.telephony.session`. The final application ID is an open decision.
+Package root and application ID: `io.github.thisisankit27.voicemail` (with `.<module>` packages, for example `io.github.thisisankit27.voicemail.telephony.session`). It is derived from the GitHub namespace the owner controls; the owner delegated the choice on 2026-11-22. The Phase 0 probe uses `io.github.thisisankit27.voicemail.probe`.
 
 ### Responsibilities and dependency rules
 - `feature:*` → `core:*`, `audio`, `contacts`, `transcription` (interfaces only). Features never depend on each other.

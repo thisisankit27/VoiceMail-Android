@@ -1,6 +1,6 @@
 # Technical Feasibility Report
 
-> **Status:** Phase 0, in progress. Desk research and the read-only device inspection are done. The on-device call experiments (E2–E6, E9–E10) are **pending**, because no SIM is installed in the test device yet.
+> **Status:** Phase 0, in progress. Desk research, the read-only device inspection, E7 (provisional) and the E4 no-call baseline are done. The on-device call experiments (E2–E6, E9–E10) are **pending**, because no SIM is installed in the test device yet.
 >
 > **Last updated:** 2026-11-22
 >
@@ -50,10 +50,10 @@ Whether steps 3 and 4 work at all depends on undocumented device behaviour: echo
 | E3: caller hears greeting | E4: caller's voice captured | Outcome |
 |---|---|---|
 | ✅ | ✅ | **GO.** Build the on-device answering machine as an *experimental, device-verified* feature with an in-app compatibility self-test. |
-| ✅ | ❌ | **PARTIAL.** Only a "greeting-only auto-responder" is possible, which is not voicemail. The project owner must decide whether to stop, pivot, or reconsider carrier forwarding to a cloud number. |
+| ✅ | ❌ | **PARTIAL.** Only a "greeting-only auto-responder" is possible, which is not voicemail. The project owner decides between stopping and a greeting-only product. Cloud forwarding is excluded ("nothing paid", 2026-11-22). |
 | ❌ | any | **NO-GO** for on-device voicemail. |
 
-> The project owner chose an **on-device-only** architecture with no backend or paid telephony (decision dated 2026-11-22). The only architecture that is *known* to deliver real voicemail is **carrier forwarding to a cloud telephony number**, Option 2b below. It is documented here for completeness and as the escalation path.
+> The project owner chose an **on-device-only** architecture with no backend or paid telephony (decision dated 2026-11-22). The only architecture that is *known* to deliver real voicemail is **carrier forwarding to a cloud telephony number**, Option 2b below. It is documented here for completeness only. On 2026-11-22 the owner confirmed that **nothing paid** may be used, even if E4 fails.
 
 ---
 
@@ -165,7 +165,7 @@ The user forwards no-reply, busy and unreachable calls to a virtual number from 
 - **Costs:** Per-minute fees, DoT KYC for the number, a backend that stores sensitive recordings, DPDP obligations, and caller-ID passthrough on forwarded calls **[CARRIER-SPECIFIC]** (needed to know who called).
 - **Contact rules** must be enforced server-side. On-device, "always to voicemail" becomes a reject from `CallScreeningService`, which triggers busy-forwarding **[UNVERIFIED]**.
 
-Rejected for now because the owner decided against paid APIs and a backend. **This is the escalation path if E4 fails.**
+**Rejected.** The owner ruled out anything paid, including in the case where E4 fails (2026-11-22).
 
 ### Option 3: Other Android-supported architectures
 | Candidate | Why it doesn't solve the problem |
@@ -184,7 +184,7 @@ Rejected for now because the owner decided against paid APIs and a backend. **Th
 
 | Feature | Verdict | Notes |
 |---|---|---|
-| TTS greeting generation | ✅ | `TextToSpeech.synthesizeToFile()` renders a WAV. Voices come from `getVoices()`, with filtering on `isNetworkConnectionRequired()`. Google TTS is installed on the G60 **[VERIFIED-DEVICE]**. Which voices are available offline is checked in E7. |
+| TTS greeting generation | ✅ | `TextToSpeech.synthesizeToFile()` renders a WAV. Voices come from `getVoices()`, with filtering on `isNetworkConnectionRequired()` and the `notInstalled` feature. On the G60, 22 offline voices are installed, including 4 en-IN and 4 hi-IN. A greeting rendered to 24 kHz mono WAV in 1.2 s **[VERIFIED-DEVICE, E7; Wi-Fi-off rerun pending]**. |
 | Recording a greeting in-app | ✅ | `AudioRecord`/`MediaRecorder` with `RECORD_AUDIO`, in the foreground, while not in a call. |
 | Importing a greeting file | ✅ | Storage Access Framework (`OpenDocument`), decoded with `MediaExtractor`/`MediaCodec` and normalised. |
 | Offline transcription | ⚠️ | The platform `SpeechRecognizer` can only take audio *files* via `EXTRA_AUDIO_SOURCE` on API 33+ **[DOC-ASSUMPTION]**. The G60 is API 31 **[VERIFIED-DEVICE]**, so an embedded engine is needed: whisper.cpp or Vosk, benchmarked in E8. |
@@ -203,10 +203,10 @@ Full procedures are in [DEVICE_TESTING.md](DEVICE_TESTING.md).
 | E1 | Can the spike obtain `ROLE_DIALER` and be bound as InCallService on the G60? | No | Pending |
 | E2 | Ring detection, app timer, `answer()`. What is the network's no-answer timeout per operator? | Yes + 2nd phone | Pending |
 | E3 | Does the caller hear a greeting played through the speaker during the call? With which `AudioAttributes` usage? | Yes + 2nd phone | Pending |
-| E4 | Does `AudioRecord` capture the caller's voice (speaker → mic) during the call, per audio source? Silence or signal? | Yes + 2nd phone | Pending |
+| E4 | Does `AudioRecord` capture the caller's voice (speaker → mic) during the call, per audio source? Silence or signal? | Yes + 2nd phone | Pending. The no-call baseline is recorded: all sources live, not silenced |
 | E5 | Can capture start while the device is locked and unattended, with the app in background before the call? | Yes + 2nd phone | Pending |
 | E6 | Disconnect, call-log entry and caller-side experience (billing, what they hear) | Yes + 2nd phone | Pending |
-| E7 | Which Google TTS voices work offline? Quality of `synthesizeToFile` | No | Pending |
+| E7 | Which Google TTS voices work offline? Quality of `synthesizeToFile` | No | **Pass (provisional)**: 4 en-IN and 4 hi-IN offline voices installed. Greeting rendered in 1.2 s. Wi-Fi-off rerun pending |
 | E8 | STT benchmark: whisper.cpp vs Vosk on the G60 (real-time factor, word error rate on Indian English and Hindi, size) | No | Pending |
 | E9 | Carrier forwarding status, operator voicemail and VVM, per SIM | Yes | Pending |
 | E10 | What the caller hears when `CallScreeningService` rejects the call (busy tone or forwarding) | Yes + 2nd phone | Pending |
