@@ -39,8 +39,8 @@ class HelperClient(private val token: () -> String) {
         Unit
     } catch (_: IOException) { }
 
-    fun grantSecureSettings(pkg: String): String = open().use { c ->
-        HelperProtocol.writeText(c.out, HelperProtocol.GRANT_SELF, pkg)
+    fun grantSecureSettings(): String = open().use { c ->
+        HelperProtocol.write(c.out, HelperProtocol.GRANT_SELF)
         HelperProtocol.read(c.input).text()
     }
 

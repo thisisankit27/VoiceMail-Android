@@ -21,7 +21,7 @@ class DebugCommandReceiver : BroadcastReceiver() {
             try {
                 AppLog.i("debug cmd=$cmd")
                 when (cmd) {
-                    "helper_start" -> AppLog.i("result: ${app.helper.ensureRunning("debug") { AppLog.i("KEY PROMPT shown: accept it on the phone") }}")
+                    "helper_start" -> AppLog.i("result: ${app.helper.ensureRunning("debug", userInitiated = true) { AppLog.i("KEY PROMPT shown: accept it on the phone") }}")
                     "helper_check" -> AppLog.i("result: ${app.helper.check()}")
                     "helper_stop" -> app.helper.stop()
                     "helper_devices" -> AppLog.i(app.helper.client.devices())

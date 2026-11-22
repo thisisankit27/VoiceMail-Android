@@ -1,6 +1,7 @@
 package io.github.thisisankit27.voicemail.helper
 
 import android.content.AttributionSource
+import io.github.thisisankit27.voicemail.BuildConfig
 import android.content.ContextWrapper
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
@@ -129,7 +130,8 @@ object HelperMain {
                         val bb = ByteBuffer.wrap(request.payload)
                         capture(bb.int, bb.int, input, output)
                     }
-                    HelperProtocol.GRANT_SELF -> HelperProtocol.writeText(output, HelperProtocol.RESULT, grantSecureSettings(request.text()))
+                    // The payload is ignored: the grant only ever goes to this app's own package.
+                    HelperProtocol.GRANT_SELF -> HelperProtocol.writeText(output, HelperProtocol.RESULT, grantSecureSettings())
                     HelperProtocol.DEVICES -> HelperProtocol.writeText(
                         output, HelperProtocol.RESULT,
                         allDevices().joinToString("\n") { "id=${it.id} type=${it.type} ${if (it.isSink) "OUT" else "IN "} '${it.productName}'" },
@@ -266,10 +268,12 @@ object HelperMain {
         }
     }
 
-    /** Lets the app hold WRITE_SECURE_SETTINGS, which it needs to switch Wireless debugging on after a reboot. */
-    private fun grantSecureSettings(pkg: String): String {
-        if (!pkg.matches(Regex("[a-zA-Z0-9_.]+"))) return "bad package"
-        val p = ProcessBuilder("pm", "grant", pkg, "android.permission.WRITE_SECURE_SETTINGS").redirectErrorStream(true).start()
+    /**
+     * Lets the app hold WRITE_SECURE_SETTINGS, which it needs to switch Wireless debugging on after
+     * a reboot. Hard-wired to this APK's own package: a caller can't name another app.
+     */
+    private fun grantSecureSettings(): String {
+        val p = ProcessBuilder("pm", "grant", BuildConfig.APPLICATION_ID, "android.permission.WRITE_SECURE_SETTINGS").redirectErrorStream(true).start()
         val out = p.inputStream.bufferedReader().readText()
         return "exit=${p.waitFor()} $out".trim()
     }

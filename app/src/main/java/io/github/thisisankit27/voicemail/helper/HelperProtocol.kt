@@ -15,7 +15,7 @@ import java.io.IOException
  */
 object HelperProtocol {
     /** Bump when frames change: the app restarts a helper that reports another version. */
-    const val VERSION = 5
+    const val VERSION = 6
     const val PORT = 47231
     const val PROCESS_NAME = "vm-audio-helper"
     const val TOKEN_ENV = "VM_HELPER_TOKEN"
@@ -29,7 +29,7 @@ object HelperProtocol {
     const val TONE = 4           // int hz, int ms -> PLAY_DONE
     const val CAPTURE = 5        // int source, int rate -> CAPTURE_DATA* until the app sends STOP or closes
     const val STOP = 6           // stop the current play/capture on this connection
-    const val GRANT_SELF = 7     // utf8 package -> RESULT (pm grant WRITE_SECURE_SETTINGS)
+    const val GRANT_SELF = 7     // -> RESULT (pm grant WRITE_SECURE_SETTINGS to this app only)
     const val SHUTDOWN = 8       // helper exits
     const val DEVICES = 9        // -> RESULT (audio device listing, for diagnostics)
 
