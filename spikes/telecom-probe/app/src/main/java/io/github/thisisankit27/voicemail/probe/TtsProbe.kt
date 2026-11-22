@@ -18,15 +18,23 @@ object TtsProbe {
         "Hi, this is a simulated caller from the loopback test. I am leaving a test message. " +
             "Please call me back when you are free. Thank you, bye."
 
-    enum class Render(val text: String, val preferredVoice: String) {
-        GREETING(TtsProbe.GREETING, "en-in-x-enc-local"),
-        CALLER(TtsProbe.CALLER, "en-in-x-end-local"),
+    /**
+     * Owner choice (2026-11-22): a male, confident greeting. Measured median F0 on the G60:
+     * en-in-x-end-local 138 Hz (deepest male), ene 154 Hz (male), ena/enc/en-IN-language 216–250 Hz (female).
+     * "Confident" = the deeper male voice, slightly lower pitch and slightly slower delivery.
+     */
+    enum class Render(val text: String, val preferredVoice: String, val pitch: Float, val rate: Float) {
+        GREETING(TtsProbe.GREETING, "en-in-x-end-local", 0.92f, 0.95f),
+        CALLER(TtsProbe.CALLER, "en-in-x-ena-local", 1f, 1f),
     }
 
     private val interesting = listOf(Locale("en", "IN"), Locale("hi", "IN"), Locale.US, Locale.UK)
 
+    /** Overrides for a render: a specific voice, pitch and speech rate (1.0 = engine default). */
+    data class Style(val voiceName: String? = null, val pitch: Float? = null, val rate: Float? = null)
+
     /** [render] null = only report the voice inventory. */
-    fun run(context: Context, render: Render?) {
+    fun run(context: Context, render: Render?, style: Style = Style()) {
         val app = context.applicationContext
         var holder: TextToSpeech? = null
         holder = TextToSpeech(app) { status ->
@@ -37,7 +45,7 @@ object TtsProbe {
                 return@TextToSpeech
             }
             report(tts)
-            if (render != null) render(app, tts, render) else tts.shutdown()
+            if (render != null) render(app, tts, render, style) else tts.shutdown()
         }
     }
 
@@ -62,9 +70,36 @@ object TtsProbe {
         }
     }
 
-    private fun render(context: Context, tts: TextToSpeech, what: Render) {
+    /** Renders [GREETING] once per installed offline en-IN voice into files/samples/<voice>.wav. */
+    fun renderSamples(context: Context) {
+        val app = context.applicationContext
+        var holder: TextToSpeech? = null
+        holder = TextToSpeech(app) { status ->
+            val tts = holder ?: return@TextToSpeech
+            if (status != TextToSpeech.SUCCESS) { tts.shutdown(); return@TextToSpeech }
+            val voices = tts.voices.orEmpty().filter { it.offline() && it.locale == Locale("en", "IN") }.sortedBy { it.name }
+            val dir = java.io.File(app.filesDir, "samples").apply { mkdirs() }
+            var remaining = voices.size
+            tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) = Unit
+                override fun onDone(utteranceId: String?) {
+                    ProbeLog.i("E7 sample rendered $utteranceId")
+                    if (--remaining == 0) { ProbeLog.i("E7 samples done (${voices.size})"); tts.shutdown() }
+                }
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) { if (--remaining == 0) tts.shutdown() }
+            })
+            for (v in voices) {
+                tts.voice = v
+                tts.synthesizeToFile(GREETING, Bundle(), java.io.File(dir, "${v.name}.wav"), v.name)
+            }
+            ProbeLog.i("E7 queued ${voices.size} samples: ${voices.joinToString { it.name }}")
+        }
+    }
+
+    private fun render(context: Context, tts: TextToSpeech, what: Render, style: Style) {
         val voices = tts.voices.orEmpty()
-        val voice = voices.firstOrNull { it.offline() && it.name == what.preferredVoice }
+        val voice = voices.firstOrNull { it.offline() && it.name == (style.voiceName ?: what.preferredVoice) }
             ?: voices.filter { it.offline() && it.locale == Locale("en", "IN") }.maxByOrNull { it.quality }
             ?: voices.filter { it.offline() && it.locale.language == "en" }.maxByOrNull { it.quality }
         if (voice == null) {
@@ -73,6 +108,11 @@ object TtsProbe {
             return
         }
         tts.voice = voice
+        val pitch = style.pitch ?: what.pitch
+        val rate = style.rate ?: what.rate
+        tts.setPitch(pitch)
+        tts.setSpeechRate(rate)
+        ProbeLog.i("E7 render style voice=${voice.name} pitch=$pitch rate=$rate")
         val file = if (what == Render.GREETING) GreetingPlayer.greetingFile(context) else LoopbackConnection.callerFile(context)
         val started = System.currentTimeMillis()
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {

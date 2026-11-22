@@ -151,6 +151,7 @@ These run against the **product app** once Phase 4 exists. They apply to spike b
 | Date | Build / commit | SIM / operator | Tests run | Summary | Link to logs (private) |
 |---|---|---|---|---|---|
 | 2026-11-22 | n/a | none (both slots ABSENT) | Baseline inspection only | See §1 | device-logs/ |
+| 2026-11-22 | probe 0.4 (`spike/male-voice`) | n/a | E7 voice choice | Owner wants a **male, confident** greeting. Measured median F0 of the installed offline en-IN voices: `end` 138 Hz and `ene` 154 Hz (male); `ena` 216 Hz, `enc` 250 Hz and `en-IN-language` 250 Hz (female). The real-call greeting had been the female `enc`. New default: `en-in-x-end-local`, pitch 0.92, rate 0.95. Owner approved by listening | local |
 | 2026-11-22 | probe 0.3 + mute | **Airtel, IN_SERVICE** (real call from a second phone) | E2 (real), E11, E12 | **Greeting injected into the call; caller captured from the downlink; room not sent** | [real-call log](device-logs/realcall-shell-run-2026-11-22.md) |
 | 2026-11-22 | probe 0.3 (`spike/shell-identity`) | none (loopback) | E11/E12 permission and policy layers, E12b | **Shell identity is allowed to play into TX and capture downlink. Audio flow needs a real call** | [shell-identity log](device-logs/shell-identity-run-2026-11-22.md) |
 | 2026-11-22 | probe 0.2 (`spike/loopback-calls`) | none needed (loopback calling account, network-free) | E1, E2 (app), E4, E5, E6 (app), Tests 4 and 10 (logic) | **E4 FAIL: all in-call capture silenced by the framework.** E1 and E5 pass | [loopback log](device-logs/loopback-run-2026-11-22.md) |
