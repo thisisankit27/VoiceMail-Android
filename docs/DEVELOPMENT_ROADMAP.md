@@ -72,6 +72,7 @@ Phase 1 (PR-07/08) can run **in parallel** with Phase 0, since it has no telepho
 - **Status (2026-11-22):** Delivered. This PR also contains the *instrument code* for PR-03 (auto-answer, speaker, greeting), PR-04 (capture probe, FGS, disconnect) and the TTS half of PR-05. Those PRs therefore become *run and record* PRs, which need a working SIM, plus the STT benchmark. E7 has a provisional pass and the E4 no-call baseline is recorded.
 
 ### PR-03: Spike auto-answer and greeting playback (E2, E3) 📱
+- **Status (2026-11-22):** The E2 app side was verified with loopback calls. E3 still needs a real call.
 - **Objective:** Measure ring and answer timing, and whether a greeting played on speaker reaches the caller.
 - **Scope:** A configurable ring timer, `answer(STATE_AUDIO_ONLY)`, speaker routing (`setAudioRoute(ROUTE_SPEAKER)` on API < 34, `requestCallEndpointChange` on 34+), and `AudioTrack` playback with a selectable `AudioAttributes` usage and volume.
 - **Dependencies:** PR-02, a SIM and Phone B.
@@ -81,6 +82,7 @@ Phase 1 (PR-07/08) can run **in parallel** with Phase 0, since it has no telepho
 - **Deliverables:** Results table and logs (private).
 
 ### PR-04: Spike in-call capture probe (E4, E5, E6) 📱
+- **Status (2026-11-22):** **E4 FAILED** (loopback: all sources silenced). E5 passed. The E6 app side passed. Done except for a real-call confirmation.
 - **Objective:** Find out whether any non-privileged capture path records the caller.
 - **Scope:** `AudioRecord` across 5 sources, an RMS meter, a WAV writer, a locked/unattended scenario, and disconnect handling.
 - **Dependencies:** PR-02 (and PR-03 for answering).

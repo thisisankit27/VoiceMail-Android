@@ -23,7 +23,7 @@
 | A2 | After N s unanswered, voicemail takes over | 🔒 GATED. Answering is supported; timing depends on the carrier (E2) |
 | A3 | Caller hears greeting | 🔒 GATED. No API; acoustic path only (E3) |
 | A4 | Caller invited to leave message (tone) | 🔒 GATED (E3) |
-| A5 | Caller's message recorded | 🔒 GATED. No API; acoustic path only (E4) |
+| A5 | Caller's message recorded | ❌ **Not possible on-device.** E4 failed: the framework silences all capture during calls (G60, 2026-11-22) |
 | A6 | Recording saved | ✅ once A5 works |
 | A7 | Ends on hang-up or max duration | ✅ `Call.disconnect()` and state callbacks |
 | **B. Greeting** | | |

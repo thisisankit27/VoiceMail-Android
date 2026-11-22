@@ -5,7 +5,7 @@ A native Android app that aims to give missed calls a modern voicemail experienc
 - messages recorded and transcribed **on the device**
 - a polished inbox
 
-> **Project status: Phase 0, technical feasibility.** No application code yet.
+> **Project status: Phase 0, technical feasibility.** No application code yet. **2026-11-22:** the decisive experiment failed. During a call, Android delivers only silence to the app's microphone capture, so caller messages cannot be recorded on-device ([details](docs/TECHNICAL_FEASIBILITY.md#1-executive-verdict)).
 >
 > **Read this first:** Android's public APIs do **not** let third-party apps record cellular call audio or play audio into a call. This project is testing an on-device "answering machine" design, in which a default-dialer app answers on speakerphone. It works acoustically, if at all. Whether that works is being tested on real hardware before any product work depends on it. See [Technical Feasibility](docs/TECHNICAL_FEASIBILITY.md).
 
