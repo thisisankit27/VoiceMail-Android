@@ -5,6 +5,7 @@
 # Needs: the probe as default dialer, a SIM that is IN SERVICE, USB adb, and a second phone.
 # Usage:  spikes/telecom-probe/scripts/realcall-shell-test.sh [output-dir]
 # Env:    RING=10 (seconds before auto-answer)  REC=20 (seconds to record the caller)
+#         MUTE=true (mute the G60 mic on answer; MUTE=false to compare what leaks into the uplink)
 #         LOOPBACK=1 dry-runs the plumbing with a network-free fake call (no real audio expected)
 set -euo pipefail
 
@@ -23,6 +24,7 @@ restore() {
   $B set_speaker --ez value true >/dev/null
   $B set_app_greeting --ez value true >/dev/null
   $B set_probe_capture --ez value true >/dev/null
+  $B set_mute_on_answer --ez value false >/dev/null
   [ "${LOOPBACK:-0}" = 1 ] && adb shell telecom set-phone-account-disabled "$P/.LoopbackConnectionService" loopback 0 >/dev/null
   echo "probe config restored (auto-answer off)"
 }
@@ -45,6 +47,7 @@ $B set_auto_answer --ei value "$RING" >/dev/null
 $B set_speaker --ez value false >/dev/null      # no speakerphone: audio goes straight into the call
 $B set_app_greeting --ez value false >/dev/null
 $B set_probe_capture --ez value false >/dev/null
+$B set_mute_on_answer --ez value "${MUTE:-true}" >/dev/null   # caller hears only the greeting, not the room
 
 adb logcat -c
 [ "$LOOPBACK" = 1 ] && $B fake_incoming --es scenario message >/dev/null

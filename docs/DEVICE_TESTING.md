@@ -95,7 +95,8 @@ These use the throwaway `spikes/telecom-probe` app (PRs 02–05). Each row needs
 Evidence: [shell-identity log](device-logs/shell-identity-run-2026-11-22.md).
 
 **Real-call procedure:** a SIM in service, the probe as default dialer, USB adb. Run `RING=10 REC=20 spikes/telecom-probe/scripts/realcall-shell-test.sh <out-dir>`, then call the G60 from another phone and let it ring. The caller should hear the greeting and a beep *in the earpiece* (no speakerphone involved), speak for about 15 s, then hang up.
-- **E11 passes** if the caller hears the greeting clearly and `uplink-during-greeting.wav` contains it.
+- **E11 passes** if the caller hears the greeting clearly, `uplink-during-greeting.wav` contains it, **and no room audio reaches the caller.** The script mutes the G60 microphone on answer (`InCallService.setMuted(true)`; loopback check: `audio route=EARPIECE muted=true`). Test this by making noise near the G60 while the greeting plays. Then rerun with `MUTE=false` to see what would leak without the mute. Open question **[UNVERIFIED]**: does the Qualcomm in-call-music path still deliver while the mic is muted? If not, the fallback is to leave the mic live during the greeting only and mute it after the beep.
+- **Recording privacy:** the message is captured from `VOICE_DOWNLINK` (the caller's side only), so the G60's room audio is not in the voicemail. `voicecall.wav` (both directions) is recorded for comparison only.
 - **E12 passes** if `downlink.wav` contains the caller's speech.
 
 Recordings stay local and are deleted after analysis.

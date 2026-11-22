@@ -39,6 +39,7 @@ object ProbeActions {
             "set_capture_seconds" -> config.captureSeconds = intent.getIntExtra("value", config.captureSeconds)
             "set_source" -> config.captureSource = intent.getIntExtra("value", config.captureSource)
             "set_usage" -> config.greetingUsage = intent.getIntExtra("value", config.greetingUsage)
+            "set_mute_on_answer" -> config.muteMicOnAnswer = intent.getBooleanExtra("value", false)
             "set_app_greeting" -> config.appGreetingEnabled = intent.getBooleanExtra("value", true)
             "set_probe_capture" -> config.probeCaptureEnabled = intent.getBooleanExtra("value", true)
             "set_speaker" -> config.speakerOnAnswer = intent.getBooleanExtra("value", true)

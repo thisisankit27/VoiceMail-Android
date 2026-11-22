@@ -129,6 +129,10 @@ class AutoAnswerSession(
             Call.STATE_ACTIVE -> if (answeredByProbe && !greetingStarted) {
                 greetingStarted = true
                 ProbeLog.i("E2 call ACTIVE at ${elapsed()} ms")
+                if (config.muteMicOnAnswer) {
+                    service.setMuted(true)
+                    ProbeLog.i("E11 microphone muted: the room is not sent to the caller")
+                }
                 if (!config.appGreetingEnabled) {
                     ProbeLog.i("E11 app greeting disabled; shell helper drives call audio")
                     return
