@@ -11,7 +11,7 @@ The full raw output is in [device-logs/moto-g60-baseline-2026-11-22.md](device-l
 | SoC / ABI | sm6150 (Snapdragon 732G) / arm64-v8a |
 | RAM / free storage | 5.5 GB / 90 GB |
 | Radio | Dual-SIM dual-standby (`dsds`), GSM + IMS (VoLTE) features |
-| **SIM state** | **ABSENT, ABSENT**. No SIM was inserted at inspection time |
+| **SIM state** | Inspection: **ABSENT, ABSENT**. Later the same day: BSNL SIM in slot 2 is `LOADED`, but the network **denies registration** (emergency calls only; prepaid plan not recharged) |
 | Default dialer | `com.google.android.dialer` 247.0.x (privileged system app holding `CAPTURE_AUDIO_OUTPUT`) |
 | Call screening / redirection role | none |
 | TTS / recognizer | Google TTS 20261026 / GoogleTTSRecognitionService |
@@ -59,8 +59,11 @@ Useful logcat tags: `Telecom`, `InCallController`, `CallAudioRouteStateMachine`,
 
 ### Install / launch (spike or app)
 ```bash
-./gradlew :spikes:telecom-probe:installDebug
-adb shell am start -n dev.ankit.voicemail.probe/.MainActivity
+cd spikes/telecom-probe && ./gradlew :app:assembleDebug
+adb install -r -g app/build/outputs/apk/debug/app-debug.apk   # -g grants the probe's own runtime permissions
+adb shell am start -n io.github.thisisankit27.voicemail.probe/.MainActivity
+# ADB-driven actions (see spikes/telecom-probe/README.md):
+adb shell am start -n io.github.thisisankit27.voicemail.probe/.MainActivity --es probe_action status
 adb shell cmd role get-role-holders android.app.role.DIALER   # verify after the 👤 role grant
 ```
 
@@ -69,13 +72,13 @@ These use the throwaway `spikes/telecom-probe` app (PRs 02–05). Each row needs
 
 | ID | Pre-conditions | Procedure | Expected (hypothesis) | Actual | Pass/Fail | Logs |
 |---|---|---|---|---|---|---|
-| **E1** Role + binding | Probe installed. No SIM needed | 1. 👤 Grant ROLE_DIALER via the probe's button. 2. `cmd role get-role-holders android.app.role.DIALER`. 3. `dumpsys telecom` → `mInCallServices`. 4. 👤 Revert | Probe is the holder. InCallService is listed when a call (or emergency-test-free dummy) exists | Pending | Pending | role, telecom dumps |
+| **E1** Role + binding | Probe installed. No SIM needed | 1. 👤 Grant ROLE_DIALER via the probe's button. 2. `cmd role get-role-holders android.app.role.DIALER`. 3. `dumpsys telecom` → `mInCallServices`. 4. 👤 Revert | Probe is the holder. InCallService is listed when a call (or emergency-test-free dummy) exists | 2026-11-22: probe installed, `RoleManager.isRoleAvailable(ROLE_DIALER)` path ready. Holder is still `com.google.android.dialer`. **Waiting for 👤 the user to tap *Become dialer* and confirm the system dialog.** Binding can only be observed once a non-emergency call exists, which needs a working SIM | Pending | role, telecom dumps |
 | **E2** Ring + timer + answer | SIM in service. Probe is the dialer. Forwarding queried with `*#61#` and recorded | Phone B calls the G60. Probe logs `onCallAdded` and the state timeline. Run 1: never answer, and measure how long until the network drops or forwards. Runs 2–4: auto-answer at 10, 20 and 25 s | `answer()` succeeds before the network timeout. Network timeout is measured per operator | Pending | Pending | logcat (Telecom), telecom dump |
 | **E3** Greeting audibility | E2 passes. Probe plays a 15 s speech clip after answering, with speaker on | 9 runs: 3 usages (`VOICE_COMMUNICATION`, `MEDIA`, `ASSISTANT`) × 3 calls. G60 face-up on a table. The Phone B operator transcribes what they hear. Also record Phone B's speaker with a third device for objective scoring (optional) | **Unknown.** AEC may cancel it | Pending | Pending | logcat (AudioPolicy), audio dump during playback |
-| **E4** Caller capture | E2 passes | During the answered call, the Phone B operator reads a fixed 30 s passage. The probe records in parallel, one source per run: `MIC`, `VOICE_RECOGNITION`, `VOICE_COMMUNICATION`, `CAMCORDER`, `UNPROCESSED`. It logs RMS every 100 ms and saves a WAV | **Likely silenced** (zeros) per the concurrent-capture policy. Any non-silent, intelligible source is a pass | Pending | Pending | logcat (AudioFlinger: "silenced"), af dump, WAVs (local only) |
+| **E4** Caller capture | E2 passes | During the answered call, the Phone B operator reads a fixed 30 s passage. The probe records in parallel, one source per run: `MIC`, `VOICE_RECOGNITION`, `VOICE_COMMUNICATION`, `CAMCORDER`, `UNPROCESSED`. It logs RMS every 100 ms and saves a WAV | **Likely silenced** (zeros) per the concurrent-capture policy. Any non-silent, intelligible source is a pass | In-call run pending (no usable SIM). **No-call baseline (2026-11-22):** all 5 sources initialise and record real ambient audio with `isClientSilenced=false`. Loudest 100 ms window: MIC −34.3, VOICE_RECOGNITION −33.4, CAMCORDER −43.7, UNPROCESSED −55.9, VOICE_COMMUNICATION −59.5 dBFS. VOICE_COMMUNICATION returned exact-zero windows 55% of the time (NS/AEC gating a quiet room). The other sources returned 6–10%, consistent with start-up zeros. This is the reference to compare the in-call run against | Pending | logcat (AudioFlinger: "silenced"), af dump, WAVs (local only) |
 | **E5** Unattended/locked | E3/E4 configuration that passed | Lock the screen, kill the probe UI task (`am kill` is not allowed while bound, so swipe it away), wait 5 min, then Phone B calls | Session runs fully while locked. No `ForegroundServiceStartNotAllowedException` and no silenced capture | Pending | Pending | logcat (ActivityManager, FGS) |
 | **E6** Disconnect + caller view | E2 passes | After 30 s of recording, the probe calls `disconnect()`. Repeat with the caller hanging up first. Note the call-log type on the G60 and what Phone B sees (call duration, any charge) | Clean disconnect. Call log shows an *incoming answered* call | Pending | Pending | telecom dump, call-log screenshot |
-| **E7** Offline TTS | No SIM. Wi-Fi off | Probe lists `tts.voices` with `isNetworkConnectionRequired`, then `synthesizeToFile` for en-IN and hi-IN | At least one offline en-IN voice renders a valid WAV | Pending | Pending | logcat (TextToSpeech), WAV |
+| **E7** Offline TTS | No SIM. Wi-Fi off | Probe lists `tts.voices` with `isNetworkConnectionRequired`, then `synthesizeToFile` for en-IN and hi-IN | At least one offline en-IN voice renders a valid WAV | 2026-11-22: Google TTS reports 473 voices, **22 installed offline**. en-IN has 4 installed `-local` voices (`ena/enc/end/ene`) and hi-IN has 4 (`hia/hic/hid/hie`). en-GB voices are listed but `notInstalled`. `synthesizeToFile` with `en-in-x-enc-local` produced a valid WAV (24 kHz, mono, 16-bit, 347 KB, about 7.2 s) in 1.24 s. **Caveat:** Wi-Fi was connected during the run. A strict Wi-Fi-off rerun (👤 user toggles Wi-Fi) is still pending | **Pass (provisional)** | logcat (TextToSpeech), WAV |
 | **E8** STT benchmark | No SIM. 20 fixture clips (10 Indian English, 5 Hindi, 5 Hinglish; 10–60 s; consented or public-domain) | Run whisper.cpp tiny/base (q5) and Vosk small en-IN/hi on the device. Record real-time factor, peak RSS and WER vs reference | whisper base RTF < 1.0 and WER clearly better than Vosk; Vosk faster | Pending | Pending | probe CSV output |
 | **E9** Carrier voicemail/VVM | SIM in service | 👤 Dial `*#61#`, `*#67#`, `*#62#` and record the replies. Inspect carrier_config for `vvm_type_string`, `vvm_*` and the voicemail number. 👤 Long-press 1 in Google Phone and record what happens | Most likely no carrier voicemail or VVM **[UNVERIFIED]** | Pending | Pending | carrier_config dump, screenshots |
 | **E10** Screening reject | Probe holds ROLE_CALL_SCREENING (👤), not the dialer role | Probe rejects calls from Phone B's number. Record what Phone B hears (busy, "not reachable", forwarding) | Busy or unavailable announcement. **[CARRIER-SPECIFIC]** | Pending | Pending | logcat (Telecom) |
@@ -112,3 +115,4 @@ These run against the **product app** once Phase 4 exists. They apply to spike b
 | Date | Build / commit | SIM / operator | Tests run | Summary | Link to logs (private) |
 |---|---|---|---|---|---|
 | 2026-11-22 | n/a | none (both slots ABSENT) | Baseline inspection only | See §1 | device-logs/ |
+| 2026-11-22 | probe 0.1 (`spike/telecom-probe`) | BSNL SIM in slot 2: `LOADED`, but CS/PS registration **DENIED**, "Emergency calls only". Owner reports the prepaid plan is not recharged | E7 (provisional pass), E4 no-call baseline, E1 prep | Calls cannot be received yet. See [device-logs/probe-run-2026-11-22-nosim.md](device-logs/probe-run-2026-11-22-nosim.md) | device-logs/ |

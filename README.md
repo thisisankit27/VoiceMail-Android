@@ -35,4 +35,4 @@ Motorola Moto G60 (Android 12, API 31, dual-SIM), inspected over ADB. See [Devic
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
-Not yet chosen.
+No license. All rights reserved (owner decision, 2026-11-22). Viewing the source does not grant permission to use, copy or redistribute it.

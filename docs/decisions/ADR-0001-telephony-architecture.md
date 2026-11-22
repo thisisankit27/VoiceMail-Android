@@ -24,7 +24,7 @@ Pursue **Option 1** as an **experimental, device-verified** feature, gated as fo
 | E3: greeting audible to caller | E4: caller captured | Result |
 |---|---|---|
 | Pass | Pass | **GO.** Implement roadmap Phase 4. The voicemail engine ships behind a mandatory in-app **compatibility self-test**, and unsupported devices see an honest "not supported on this device" state. |
-| Pass | Fail | **STOP and escalate.** Only a greeting-only auto-responder is possible. The owner chooses between stopping, shipping a greeting-only auto-responder, or revisiting Option 2b. |
+| Pass | Fail | **STOP and escalate.** Only a greeting-only auto-responder is possible. The owner chooses between stopping and shipping a greeting-only auto-responder. Option 2b is **not** available, because the owner ruled out anything paid (2026-11-22). |
 | Fail | any | **NO-GO** for on-device voicemail. Escalate to the owner. |
 
 E3 passes if the caller, on a second phone, clearly hears and understands at least 90% of the greeting's words in each of 3 trial calls at default greeting volume.
@@ -47,4 +47,4 @@ Option 3 (CallScreeningService) is kept as an optional **rules-only mode** that 
 ## Revisit triggers
 - E4 fails on the G60.
 - A public Android API for call audio processing becomes available at a level the target devices run (see TELEPHONY_RESEARCH §1.3).
-- The owner reconsiders Option 2b.
+- The owner lifts the "nothing paid" constraint (2026-11-22), which would make Option 2b eligible again.

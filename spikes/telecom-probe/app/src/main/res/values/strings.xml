@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Telecom Probe</string>
+    <string name="dial_label">Probe Dialer</string>
+</resources>

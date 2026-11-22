@@ -69,6 +69,7 @@ Phase 1 (PR-07/08) can run **in parallel** with Phase 0, since it has no telepho
 - **Testing:** Manual on the G60, plus `cmd role` and `dumpsys telecom` checks.
 - **Risks:** An incomplete dialer UI causes RoleManager to revoke the role. Mitigation: implement the required filters exactly as in the official guide.
 - **Deliverables:** APK and an E1 result in DEVICE_TESTING.md.
+- **Status (2026-11-22):** Delivered. This PR also contains the *instrument code* for PR-03 (auto-answer, speaker, greeting), PR-04 (capture probe, FGS, disconnect) and the TTS half of PR-05. Those PRs therefore become *run and record* PRs, which need a working SIM, plus the STT benchmark. E7 has a provisional pass and the E4 no-call baseline is recorded.
 
 ### PR-03: Spike auto-answer and greeting playback (E2, E3) 📱
 - **Objective:** Measure ring and answer timing, and whether a greeting played on speaker reaches the caller.
