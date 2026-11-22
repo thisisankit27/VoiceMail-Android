@@ -141,13 +141,22 @@ class HelperLauncher(private val context: Context) {
         }
         try {
             _status.value = HelperStatus.Starting("Finding Wireless debugging port")
-            val port = AdbPortFinder.findTlsPort(context, 20_000)
-                ?: return HelperStatus.Stopped(
+            var port = AdbPortFinder.findTlsPort(context, 15_000)
+            if (port == null && switchedOn) {
+                // Seen once right after an app update: adbd never announced the port. Restarting
+                // Wireless debugging makes it announce again.
+                AppLog.i("no Wireless debugging port yet; restarting Wireless debugging once")
+                Settings.Global.putInt(context.contentResolver, ADB_WIFI_ENABLED, 0)
+                delay(1_000)
+                Settings.Global.putInt(context.contentResolver, ADB_WIFI_ENABLED, 1)
+                port = AdbPortFinder.findTlsPort(context, 15_000)
+            }
+            port ?: return HelperStatus.Stopped(
                     if (onWifi()) HelperStatus.Problem.WIRELESS_DEBUGGING_UNAVAILABLE else HelperStatus.Problem.NO_WIFI,
                     "No Wireless debugging port appeared. If the phone asked \"Allow wireless debugging on this network?\", choose Always allow.",
                 )
             _status.value = HelperStatus.Starting("Connecting to ADB")
-            return launchVia(port, onKeyPrompt) ?: HelperStatus.Stopped(HelperStatus.Problem.LAUNCH_FAILED)
+            return launchVia(port!!, onKeyPrompt) ?: HelperStatus.Stopped(HelperStatus.Problem.LAUNCH_FAILED)
         } finally {
             if (switchedOn && turnOffWirelessDebugging && hasSecureSettings()) {
                 Settings.Global.putInt(context.contentResolver, ADB_WIFI_ENABLED, 0)

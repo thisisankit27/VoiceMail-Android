@@ -104,4 +104,10 @@ Dialer surfaces (🔒) live outside the bottom nav: Dial pad (launcher alias + A
 | Greeting editor (3.5, 3.6) | Built: messages on/off, "Read aloud" (name, text with `{name}`, offline voices with friendly labels and samples, pitch, speed) or "My voice" (record up to 45 s, level meter, auto-trim, normalise), Listen, Save |
 | Settings (3.7–3.10) | Built: master switch, ring time, longest message, silence stop, who goes to voicemail, notifications, audio-helper controls, default-app shortcut, diagnostics log |
 | Setup checklist (3.1, 3.11) | Built as one live checklist that also serves as onboarding: phone app role, permissions, one-time helper authorisation, helper status, greeting, master switch |
-| Dialer surfaces (§4) | Next PR |
+| Home navigation | Bottom bar: Recents · Contacts · Voicemail (unread badge), with a keypad button on every tab |
+| Dial pad (§4) | T9 keys with letters, contact suggestions ranked by first name, as-you-type formatting, paste, add to contacts, long-press 0 for +, long-press * / # for pause / wait, key tones (system setting), redial on an empty Call, SIM picker on dual-SIM phones |
+| Recents | Grouped by number, kind and day. Incoming / outgoing / missed / declined icons. Calls answered by voicemail are tagged *Voicemail* or *Voicemail · no message*. Missed-only filter. Per-row call, message, listen, add contact, copy, delete. Opening Recents clears the missed-call badge |
+| Contacts | Search, favourites row, A–Z sections, a number chooser for multi-number contacts, create contact |
+| Incoming call (§4) | Full screen over the lock screen and CallStyle notification. Answer / Decline, decline with a message, Silence, and the voicemail countdown chip with *Voicemail now* |
+| In-call (§4) | Mute, keypad (DTMF while held down), speaker or audio picker (Bluetooth devices, wired headset), add call, hold / resume, swap, merge, manage conference (private / end per person), held-call banner, call waiting (hold & answer, end & answer, decline), proximity screen-off on the earpiece, a brief *Call ended* state |
+| Voicemail in progress (§4) | *Playing your greeting* / *Recording a message* with elapsed time and a live level meter. **Listen in** (hear the caller on speaker while your mic stays muted), **Take over** and End |

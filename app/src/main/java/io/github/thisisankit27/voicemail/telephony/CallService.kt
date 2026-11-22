@@ -12,6 +12,10 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import androidx.core.content.ContextCompat
 import io.github.thisisankit27.voicemail.R
 import io.github.thisisankit27.voicemail.app
@@ -25,7 +29,31 @@ import io.github.thisisankit27.voicemail.ui.call.InCallActivity
  * the ongoing-call notification with its timer and Hang up action.
  */
 class CallService : Service() {
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        // Re-post when what the notification shows changes (ringing → active, greeting → recording).
+        scope.launch {
+            CallManager.calls
+                .map { list -> list.map { Triple(it.id, it.phase, it.voicemail?.let { v -> v::class }) } }
+                .distinctUntilChanged()
+                .collect { if (it.isNotEmpty()) refresh() }
+        }
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
+    }
+
+    private fun refresh() {
+        val calls = CallManager.calls.value
+        if (calls.isEmpty()) return
+        getSystemService(android.app.NotificationManager::class.java).notify(Notifier.ID_CALL, build(calls))
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val calls = CallManager.calls.value

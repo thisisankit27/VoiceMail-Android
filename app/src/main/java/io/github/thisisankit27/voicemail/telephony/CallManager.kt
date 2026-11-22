@@ -42,6 +42,7 @@ data class CallUi(
     val canMute: Boolean,
     val isConference: Boolean,
     val childCount: Int,
+    val childIds: List<String>,
     val parentId: String?,
     val simLabel: String?,
     val disconnectLabel: String?,
@@ -171,6 +172,7 @@ object CallManager {
             canMute = d.can(Call.Details.CAPABILITY_MUTE),
             isConference = conference,
             childCount = call.children.size,
+            childIds = call.children.mapNotNull { ids[it] },
             parentId = call.parent?.let { ids[it] },
             simLabel = simLabeler(call),
             disconnectLabel = d.disconnectCause?.let { describe(it) },
@@ -213,6 +215,7 @@ object CallManager {
 
     @Suppress("DEPRECATION")
     fun setRoute(route: AudioRoute) {
+        io.github.thisisankit27.voicemail.core.AppLog.i("audio route -> $route (requested by the user)")
         service?.setAudioRoute(
             when (route) {
                 AudioRoute.SPEAKER -> CallAudioState.ROUTE_SPEAKER

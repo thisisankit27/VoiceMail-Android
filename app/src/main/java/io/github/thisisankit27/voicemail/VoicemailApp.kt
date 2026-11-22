@@ -33,6 +33,9 @@ class VoicemailApp : Application() {
     val notifier by lazy { Notifier(this, contacts) }
     val voicemails by lazy { VoicemailRepository(this, database.voicemails()) }
     val player by lazy { VoicemailPlayer(this) }
+    val callLog by lazy { io.github.thisisankit27.voicemail.contacts.CallLogRepository(this) }
+    val contactsRepo by lazy { io.github.thisisankit27.voicemail.contacts.ContactsRepository(this) }
+    val sims by lazy { io.github.thisisankit27.voicemail.contacts.SimAccounts(this) }
     val helper: HelperLauncher by lazy { HelperLauncher(this) }
     val engine by lazy {
         VoicemailEngine(
