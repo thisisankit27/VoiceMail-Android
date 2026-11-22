@@ -1,0 +1,140 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "f15175dce7da2323e657d660b96c304d",
+    "entities": [
+      {
+        "tableName": "voicemail",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `caller_number` TEXT, `presentation` INTEGER NOT NULL, `caller_name` TEXT, `audio_file` TEXT, `duration_ms` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `ring_ms` INTEGER NOT NULL, `is_read` INTEGER NOT NULL, `is_deleted` INTEGER NOT NULL, `is_starred` INTEGER NOT NULL, `status` TEXT NOT NULL, `peak_db` REAL NOT NULL, `sim_label` TEXT, `transcript` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "callerNumber",
+            "columnName": "caller_number",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "presentation",
+            "columnName": "presentation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "callerName",
+            "columnName": "caller_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "audioFile",
+            "columnName": "audio_file",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "duration_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ringMs",
+            "columnName": "ring_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isRead",
+            "columnName": "is_read",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isStarred",
+            "columnName": "is_starred",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peakDb",
+            "columnName": "peak_db",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "simLabel",
+            "columnName": "sim_label",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "transcript",
+            "columnName": "transcript",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_voicemail_is_deleted_created_at",
+            "unique": false,
+            "columnNames": [
+              "is_deleted",
+              "created_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_voicemail_is_deleted_created_at` ON `${TABLE_NAME}` (`is_deleted`, `created_at`)"
+          },
+          {
+            "name": "index_voicemail_caller_number",
+            "unique": false,
+            "columnNames": [
+              "caller_number"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_voicemail_caller_number` ON `${TABLE_NAME}` (`caller_number`)"
+          },
+          {
+            "name": "index_voicemail_is_read",
+            "unique": false,
+            "columnNames": [
+              "is_read"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_voicemail_is_read` ON `${TABLE_NAME}` (`is_read`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f15175dce7da2323e657d660b96c304d')"
+    ]
+  }
+}
