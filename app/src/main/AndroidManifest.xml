@@ -109,6 +109,17 @@
             android:name=".telephony.CallActionReceiver"
             android:exported="false" />
 
+        <!-- Shares a voicemail's audio only when the owner taps Share (one-off read grant). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <receiver
             android:name=".helper.BootReceiver"
             android:exported="true">

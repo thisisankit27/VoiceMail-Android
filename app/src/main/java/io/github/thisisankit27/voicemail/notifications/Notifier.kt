@@ -1,13 +1,11 @@
 package io.github.thisisankit27.voicemail.notifications
 
-import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import io.github.thisisankit27.voicemail.R
 import io.github.thisisankit27.voicemail.contacts.ContactLookup
 import io.github.thisisankit27.voicemail.data.Voicemail
@@ -40,7 +38,8 @@ class Notifier(private val context: Context, private val contacts: ContactLookup
         )
     }
 
-    private fun canPost() = context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    /** POST_NOTIFICATIONS is only a runtime permission on Android 13+; this covers both cases. */
+    private fun canPost() = nm.areNotificationsEnabled()
 
     fun newVoicemail(v: Voicemail) {
         if (!canPost()) return

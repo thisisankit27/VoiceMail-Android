@@ -95,3 +95,13 @@ Dialer surfaces (🔒) live outside the bottom nav: Dial pad (launcher alias + A
 - Never say "records your calls". Say "lets callers leave you a message".
 - Status language is precise, for example "Not verified on this phone yet", rather than vague phrasing like "May not work".
 - The default greeting text is the one given in the brief. The closing variant is: "Hello! You've reached {name}. I can't take your call right now, and messages aren't being accepted at the moment. Please try again later. Goodbye."
+
+## 6. Implementation status (personal build)
+| Surface | Status |
+|---|---|
+| Dashboard + inbox (3.2, 3.3) | Built: status card with live service state, greeting card, filter chips (All / Unread / Starred), day groups, swipe-to-delete with Undo, mark all read. Callers who hung up without a message collapse to one quiet line |
+| Detail + player (3.4) | Built inline (tap a row): play/pause, seek, ±10 s, speed, speaker/earpiece, call back, message, share, star, mark unread, delete |
+| Greeting editor (3.5, 3.6) | Built: messages on/off, "Read aloud" (name, text with `{name}`, offline voices with friendly labels and samples, pitch, speed) or "My voice" (record up to 45 s, level meter, auto-trim, normalise), Listen, Save |
+| Settings (3.7–3.10) | Built: master switch, ring time, longest message, silence stop, who goes to voicemail, notifications, audio-helper controls, default-app shortcut, diagnostics log |
+| Setup checklist (3.1, 3.11) | Built as one live checklist that also serves as onboarding: phone app role, permissions, one-time helper authorisation, helper status, greeting, master switch |
+| Dialer surfaces (§4) | Next PR |
