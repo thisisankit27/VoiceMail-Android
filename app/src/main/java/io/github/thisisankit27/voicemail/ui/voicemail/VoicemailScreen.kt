@@ -325,6 +325,10 @@ private fun VoicemailRow(v: Voicemail, expanded: Boolean, onClick: () -> Unit, o
             AnimatedVisibility(expanded, enter = expandVertically(), exit = shrinkVertically()) {
                 Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (!empty) app.voicemails.audio(v)?.let { file -> PlayerControls(v.id, file, v.durationMs) }
+                    app.voicemails.callerSide(v)?.let { file ->
+                        Text("What the caller heard", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        PlayerControls("${v.id}-caller", file, (file.length() - 44) / 32)
+                    }
                     v.transcript?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         v.callerNumber?.let { number ->

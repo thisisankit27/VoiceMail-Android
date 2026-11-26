@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.telecom.Call
 import android.telecom.VideoProfile
 import io.github.thisisankit27.voicemail.core.AppLog
+import io.github.thisisankit27.voicemail.core.Tones
 import io.github.thisisankit27.voicemail.core.Wav
 import io.github.thisisankit27.voicemail.core.WavWriter
 import io.github.thisisankit27.voicemail.core.redactNumber
@@ -91,7 +92,8 @@ class VoicemailSession(
     private fun abortAudio() {
         val p = playback
         val c = capture
-        scope.launch(Dispatchers.IO) { p?.stop(); c?.stop() }
+        val u = uplink
+        scope.launch(Dispatchers.IO) { p?.stop(); c?.stop(); u?.stop() }
     }
 
     private suspend fun run() {
@@ -144,18 +146,33 @@ class VoicemailSession(
             delay(700) // let the in-call audio path settle before injecting audio
 
             // 4. Greeting into the call.
+            startCallerSideCopy()
             CallManager.setVoicemailPhase(call, VoicemailPhase.Greeting)
-            val summary = playThroughHelper { deps.helperClient.play(greeting.samples, greeting.sampleRate, greeting.channels) }
-            AppLog.i("session: greeting $summary")
+            // Greeting and beep go out as ONE clip: a separate short beep clip was inaudible to callers.
+            val clip = if (settings.allowMessages) Tones.greetingWithBeep(greeting) else greeting
+            val summary = playThroughHelper { deps.helperClient.play(clip.samples, clip.sampleRate, clip.channels) }
+            AppLog.i("session: greeting${if (settings.allowMessages) "+beep" else ""} $summary")
             if (!settings.allowMessages) {
                 CallManager.setVoicemailPhase(call, VoicemailPhase.Closing)
+                delay(HANGUP_GRACE_MS) // let the end of the closing greeting reach the caller
                 return
             }
             if (state.value != Call.STATE_ACTIVE) return
-            playThroughHelper { deps.helperClient.tone(1000, 450) }
 
-            // 5. Record the caller.
-            record(number)
+            // 5. Record the caller, up to the limit. Only one in-call capture at a time (see below).
+            pauseCallerSideCopy()
+            val stopReason = record(number)
+
+            // 6. Time's up: tell the caller with two beeps, then the app hangs up (in finally).
+            if (stopReason == "max length" || stopReason == "silence") {
+                CallManager.setVoicemailPhase(call, VoicemailPhase.Closing)
+                startCallerSideCopy()
+                val end = playThroughHelper { deps.helperClient.play(Tones.endBeeps(), 16_000) }
+                AppLog.i("session: end beeps $end")
+                // The uplink lags ~0.5–0.9 s behind what the helper writes. Keep the line open a moment
+                // so the beeps fully reach the caller and the caller-side copy contains them.
+                delay(HANGUP_GRACE_MS)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -164,6 +181,8 @@ class VoicemailSession(
             withContext(NonCancellable) {
                 playback?.stop(); playback?.close()
                 capture?.stop(); capture?.close()
+                // Stop the caller-side copy BEFORE unmuting, so it never contains the owner's voice.
+                stopCallerSideCopy()
                 CallManager.setVoicemailPhase(call, null)
                 if (answeredByApp) {
                     if (takenOver) {
@@ -193,7 +212,8 @@ class VoicemailSession(
         }
     }
 
-    private suspend fun record(number: String?) = withContext(Dispatchers.IO) {
+    /** Records the caller; returns why it stopped. */
+    private suspend fun record(number: String?): String = withContext(Dispatchers.IO) {
         val dir = File(deps.context.filesDir, "voicemails").apply { mkdirs() }
         val fileName = "vm_$id.wav"
         val file = File(dir, fileName)
@@ -264,10 +284,70 @@ class VoicemailSession(
                 if (!empty) deps.onNewVoicemail(id)
             }
         }
+        stopReason
+    }
+
+    // ---- Diagnostics: what the caller heard ------------------------------------------------
+
+    private var uplink: HelperClient.Capture? = null
+    private var uplinkJob: Job? = null
+    private var uplinkWriter: WavWriter? = null
+
+    /**
+     * When enabled, records the call UPLINK (what is sent to the caller) into vm_<id>_caller.wav:
+     * the greeting and beep, and later the end beeps. It is paused while the caller's message is
+     * recorded: on the G60 two simultaneous in-call captures share one HAL stream, and a running
+     * uplink capture made the message (downlink) capture come back silent (real call, 2026-11-23).
+     * One second of silence marks where the message recording was skipped.
+     */
+    private fun startCallerSideCopy() {
+        if (!settings.saveCallerSide) return
+        val writer = uplinkWriter ?: run {
+            val file = callerSideFile(deps.context, id)
+            file.parentFile?.mkdirs()
+            WavWriter(file, CAPTURE_RATE).also { uplinkWriter = it }
+        }
+        if (writer.bytesWritten > 0) writer.write(Tones.silence(CAPTURE_RATE, 1_000))
+        uplinkJob = scope.launch(Dispatchers.IO) {
+            try {
+                val c = deps.helperClient.capture(MediaRecorder.AudioSource.VOICE_UPLINK, CAPTURE_RATE)
+                uplink = c
+                while (isActive) {
+                    val chunk = runInterruptible { c.read() } ?: break
+                    synchronized(writer) { writer.write(chunk) }
+                }
+            } catch (e: Exception) {
+                if (e !is CancellationException) AppLog.w("caller-side copy failed", e)
+            } finally {
+                uplink?.close()
+                uplink = null
+            }
+        }
+    }
+
+    /** Pauses the copy and waits until the uplink capture is really closed. */
+    private suspend fun pauseCallerSideCopy() {
+        val job = uplinkJob ?: return
+        withContext(Dispatchers.IO) { uplink?.stop() }
+        withTimeoutOrNull(1_500) { job.join() } ?: job.cancel()
+        uplinkJob = null
+    }
+
+    private suspend fun stopCallerSideCopy() {
+        pauseCallerSideCopy()
+        uplinkWriter?.let { w ->
+            synchronized(w) { w.close() }
+            AppLog.i("session: caller-side copy saved (${w.durationMs} ms)")
+        }
+        uplinkWriter = null
     }
 
     companion object {
         const val CAPTURE_RATE = 16_000
+        /** Time the line stays open after the last sound, so it reaches the caller before hang-up. */
+        const val HANGUP_GRACE_MS = 1_500L
+
+        fun callerSideFile(context: android.content.Context, id: String) = File(File(context.filesDir, "voicemails"), "vm_${id}_caller.wav")
         /** A 100 ms window louder than this counts as the caller speaking. */
         const val VOICE_DB = -45.0
 

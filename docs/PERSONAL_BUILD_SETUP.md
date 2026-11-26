@@ -30,6 +30,9 @@ Developer scripts (debug builds only):
 - `scripts/helper-usb.sh` starts the helper from a PC over USB, with the same command the app runs.
 - `scripts/loopback-regression.sh` runs the network-free call regression.
 
+## What callers experience
+After the ring time (20 s by default) the app answers. The caller hears your greeting, a beep, and then has **30 seconds** to speak. Two short beeps mean time is up, and the call ends. Settings → *Keep what callers hear* saves the audio sent to the caller with each voicemail, for checking.
+
 ## Known limits
 - Starting the helper needs **Wi-Fi** (an Android rule for Wireless debugging). Once started, it does not need Wi-Fi.
 - Calls that arrive after a reboot but before the first unlock, or before Wi-Fi connects, are not answered.

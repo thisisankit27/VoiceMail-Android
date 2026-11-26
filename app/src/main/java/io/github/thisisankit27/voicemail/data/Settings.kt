@@ -22,12 +22,13 @@ data class AppSettings(
     val enabled: Boolean = false,
     /** Seconds of ringing before the app answers. The carrier may forward earlier. */
     val ringSeconds: Int = 20,
-    val maxMessageSeconds: Int = 120,
+    /** Owner choice (2026-11-23): 30 s, then a beep and the app hangs up. */
+    val maxMessageSeconds: Int = 30,
     /** When false, callers hear the closing greeting and the call ends (no recording). */
     val allowMessages: Boolean = true,
     val routing: RoutingMode = RoutingMode.EVERYONE,
-    /** End the message after this many seconds of silence once the caller has spoken. 0 = off. */
-    val silenceStopSeconds: Int = 8,
+    /** End the message after this many seconds of silence once the caller has spoken. 0 = off (default: record the full time). */
+    val silenceStopSeconds: Int = 0,
     val greetingSource: GreetingSource = GreetingSource.TTS,
     val ownerName: String = "",
     val greetingText: String = DEFAULT_GREETING,
@@ -37,6 +38,8 @@ data class AppSettings(
     val voiceRate: Float = 0.95f,
     val notifyNewVoicemail: Boolean = true,
     val onboardingDone: Boolean = false,
+    /** Diagnostics: also keep what the caller heard (the call uplink: greeting and beeps). */
+    val saveCallerSide: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_GREETING =
@@ -68,6 +71,8 @@ class SettingsStore(private val context: Context) {
         val rate = floatPreferencesKey("rate")
         val notify = booleanPreferencesKey("notify")
         val onboarding = booleanPreferencesKey("onboarding_done")
+        val callerSide = booleanPreferencesKey("save_caller_side")
+        val version = intPreferencesKey("defaults_version")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { it.toSettings() }
@@ -79,7 +84,7 @@ class SettingsStore(private val context: Context) {
             val s = transform(prefs.toSettings())
             prefs[K.enabled] = s.enabled
             prefs[K.ring] = s.ringSeconds.coerceIn(5, 60)
-            prefs[K.maxMsg] = s.maxMessageSeconds.coerceIn(15, 600)
+            prefs[K.maxMsg] = s.maxMessageSeconds.coerceIn(10, 600)
             prefs[K.allow] = s.allowMessages
             prefs[K.routing] = s.routing.name
             prefs[K.silence] = s.silenceStopSeconds.coerceIn(0, 60)
@@ -92,6 +97,21 @@ class SettingsStore(private val context: Context) {
             prefs[K.rate] = s.voiceRate
             prefs[K.notify] = s.notifyNewVoicemail
             prefs[K.onboarding] = s.onboardingDone
+            prefs[K.callerSide] = s.saveCallerSide
+        }
+    }
+
+    /**
+     * Applies changed defaults to settings saved by an older version. v2 (2026-11-23): messages
+     * are capped at 30 s and silence no longer ends them early (owner request).
+     */
+    suspend fun migrate() {
+        context.dataStore.edit { prefs ->
+            if ((prefs[K.version] ?: 1) < 2) {
+                if (prefs.contains(K.maxMsg)) prefs[K.maxMsg] = 30
+                if (prefs.contains(K.silence)) prefs[K.silence] = 0
+                prefs[K.version] = 2
+            }
         }
     }
 
@@ -113,6 +133,7 @@ class SettingsStore(private val context: Context) {
             voiceRate = this[K.rate] ?: d.voiceRate,
             notifyNewVoicemail = this[K.notify] ?: d.notifyNewVoicemail,
             onboardingDone = this[K.onboarding] ?: d.onboardingDone,
+            saveCallerSide = this[K.callerSide] ?: d.saveCallerSide,
         )
     }
 }
