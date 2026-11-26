@@ -52,4 +52,19 @@ class WavTest {
         val mono = Wav.toMono(Pcm(8000, 2, shortArrayOf(100, 300, -100, -300)))
         assertArrayEquals(shortArrayOf(200, -200), mono.samples)
     }
+
+    @Test fun `silence is trimmed from both ends with a little margin`() {
+        val rate = 16_000
+        val tone = Tones.beep(rate, 1000)
+        val pcm = Pcm(rate, 1, ShortArray(rate * 2) + tone + ShortArray(rate * 3))
+        val t = Wav.trimSilence(pcm)
+        // 1 s of sound + up to 100 ms before and 200 ms after (rounded to 20 ms windows)
+        assertTrue("got ${t.durationMs}", t.durationMs in 1_000..1_360)
+    }
+
+    @Test fun `duration is read from the header`() {
+        val f = File(tmp.root, "d.wav")
+        Wav.write(f, Pcm(44_100, 1, ShortArray(44_100 * 3)))
+        assertEquals(3_000, Wav.durationMs(f))
+    }
 }

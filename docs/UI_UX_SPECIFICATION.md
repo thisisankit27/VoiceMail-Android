@@ -101,7 +101,7 @@ Dialer surfaces (🔒) live outside the bottom nav: Dial pad (launcher alias + A
 |---|---|
 | Dashboard + inbox (3.2, 3.3) | Built: status card with live service state, greeting card, filter chips (All / Unread / Starred), day groups, swipe-to-delete with Undo, mark all read. Callers who hung up without a message collapse to one quiet line |
 | Detail + player (3.4) | Built inline (tap a row): play/pause, seek, ±10 s, speed, speaker/earpiece, call back, message, share, star, mark unread, delete |
-| Greeting editor (3.5, 3.6) | Built: messages on/off, "Read aloud" (name, text with `{name}`, offline voices with friendly labels and samples, pitch, speed) or "My voice" (record up to 45 s, level meter, auto-trim, normalise), Listen, Save |
+| Greeting editor (3.5, 3.6) | Built: messages on/off, three sources. **Read aloud**: name, text with `{name}`, offline voices with friendly labels and samples, pitch, speed. **My voice**: record up to 45 s, level meter, auto-trim, normalise. **Upload**: any audio file the phone can play (MP3, M4A, WAV, OGG…) through the system picker, decoded on the phone, mixed to mono, trimmed, normalised, capped at 60 s, preview before *Use this file*. Plus Listen and Save |
 | Settings (3.7–3.10) | Built: master switch, ring time, longest message, silence stop, who goes to voicemail, notifications, audio-helper controls, default-app shortcut, diagnostics log |
 | Setup checklist (3.1, 3.11) | Built as one live checklist that also serves as onboarding: phone app role, permissions, one-time helper authorisation, helper status, greeting, master switch |
 | Home navigation | Bottom bar: Recents · Contacts · Voicemail (unread badge), with a keypad button on every tab |

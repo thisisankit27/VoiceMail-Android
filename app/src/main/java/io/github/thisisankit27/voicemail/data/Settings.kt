@@ -15,7 +15,8 @@ import kotlinx.coroutines.flow.map
 /** Who the voicemail answers for. Contacts never reach voicemail in UNKNOWN_ONLY. */
 enum class RoutingMode { EVERYONE, UNKNOWN_ONLY }
 
-enum class GreetingSource { TTS, RECORDED }
+/** Where the "messages allowed" greeting comes from. */
+enum class GreetingSource { TTS, RECORDED, UPLOADED }
 
 data class AppSettings(
     /** Master switch: answer unanswered calls and take a message. */

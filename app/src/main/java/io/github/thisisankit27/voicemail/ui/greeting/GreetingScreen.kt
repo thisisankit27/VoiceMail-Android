@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -72,6 +73,9 @@ import io.github.thisisankit27.voicemail.data.AppSettings
 import io.github.thisisankit27.voicemail.data.GreetingSource
 import io.github.thisisankit27.voicemail.greeting.GreetingKind
 import io.github.thisisankit27.voicemail.greeting.GreetingRecorder
+import io.github.thisisankit27.voicemail.greeting.AudioImport
+import io.github.thisisankit27.voicemail.greeting.ImportedGreeting
+import io.github.thisisankit27.voicemail.core.Wav
 import io.github.thisisankit27.voicemail.ui.components.Formats
 import io.github.thisisankit27.voicemail.ui.granted
 import kotlinx.coroutines.launch
@@ -127,14 +131,23 @@ private fun GreetingEditor(saved: AppSettings, modifier: Modifier) {
         }
 
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            SegmentedButton(draft.greetingSource == GreetingSource.TTS, { draft = draft.copy(greetingSource = GreetingSource.TTS) }, SegmentedButtonDefaults.itemShape(0, 2),
-                icon = { Icon(Icons.Filled.RecordVoiceOver, null, Modifier.size(18.dp)) }) { Text("Read aloud") }
-            SegmentedButton(draft.greetingSource == GreetingSource.RECORDED, { draft = draft.copy(greetingSource = GreetingSource.RECORDED) }, SegmentedButtonDefaults.itemShape(1, 2),
-                icon = { Icon(Icons.Filled.Mic, null, Modifier.size(18.dp)) }) { Text("My voice") }
+            val sources = listOf(
+                Triple(GreetingSource.TTS, "Read aloud", Icons.Filled.RecordVoiceOver),
+                Triple(GreetingSource.RECORDED, "My voice", Icons.Filled.Mic),
+                Triple(GreetingSource.UPLOADED, "Upload", Icons.Filled.UploadFile),
+            )
+            sources.forEachIndexed { i, (source, label, icon) ->
+                SegmentedButton(
+                    draft.greetingSource == source, { draft = draft.copy(greetingSource = source) }, SegmentedButtonDefaults.itemShape(i, sources.size),
+                    icon = { Icon(icon, null, Modifier.size(18.dp)) },
+                ) { Text(label, maxLines = 1) }
+            }
         }
 
         if (draft.greetingSource == GreetingSource.RECORDED && draft.allowMessages) {
             RecordPanel(onUse = { scope.launch { app.settings.update { it.copy(greetingSource = GreetingSource.RECORDED) } } })
+        } else if (draft.greetingSource == GreetingSource.UPLOADED && draft.allowMessages) {
+            UploadPanel(onUse = { scope.launch { app.settings.update { it.copy(greetingSource = GreetingSource.UPLOADED) } } })
         } else {
             OutlinedTextField(draft.ownerName, { draft = draft.copy(ownerName = it) }, label = { Text("Your name") },
                 supportingText = { Text("Replaces {name} in the greeting") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -183,7 +196,7 @@ private fun GreetingEditor(saved: AppSettings, modifier: Modifier) {
             OutlinedButton(enabled = !busy, onClick = {
                 save {
                     val kind = if (draft.allowMessages) GreetingKind.MESSAGE else GreetingKind.CLOSING
-                    val file = if (kind == GreetingKind.MESSAGE && draft.greetingSource == GreetingSource.RECORDED && app.greetings.recordedFile.exists()) app.greetings.recordedFile else app.greetings.file(kind)
+                    val file = (if (kind == GreetingKind.MESSAGE) app.greetings.ownAudio(draft) else null) ?: app.greetings.file(kind)
                     app.player.toggle("greeting-preview-${System.nanoTime()}", file)
                 }
             }) {
@@ -207,6 +220,80 @@ private fun LabeledSlider(label: String, value: Float, range: ClosedFloatingPoin
     Column {
         Row { Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge); Text("%.2f×".format(value), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Slider(value, onChange, valueRange = range)
+    }
+}
+
+@Composable
+private fun UploadPanel(onUse: () -> Unit) {
+    val context = LocalContext.current
+    val app = context.app
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var pending by remember { mutableStateOf<ImportedGreeting?>(null) }
+    var current by remember { mutableStateOf(app.greetings.uploadedFile.takeIf { it.exists() }?.let { app.greetings.uploadedName to Wav.durationMs(it) }) }
+    val preview = remember { File(context.cacheDir, "upload-preview.wav") }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        busy = true; error = null; pending = null
+        scope.launch {
+            try {
+                val imported = AudioImport.import(context, uri)
+                Wav.write(preview, imported.pcm)
+                pending = imported
+            } catch (e: Exception) {
+                error = e.message ?: "Couldn't read that file."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "Use any audio file as your greeting: MP3, M4A, WAV, OGG and more. It's trimmed, levelled and kept on this phone. Up to ${AudioImport.MAX_MS / 1000} s.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            current?.let { (name, ms) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("In use: ${name ?: "uploaded file"} · ${Formats.duration(ms)}", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    IconButton(onClick = { app.player.toggle("uploaded-${app.greetings.uploadedFile.lastModified()}", app.greetings.uploadedFile) }) { Icon(Icons.Filled.PlayArrow, "Play uploaded greeting") }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                FilledTonalButton(enabled = !busy, onClick = { picker.launch(arrayOf("audio/*")) }) {
+                    Icon(Icons.Filled.UploadFile, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+                    Text(if (current == null) "Choose audio file" else "Choose another file")
+                }
+                if (busy) { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp); Text("Preparing…") }
+            }
+            pending?.let { p ->
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(p.sourceName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(
+                        "${Formats.duration(p.pcm.durationMs)} after trimming" + if (p.trimmedToMax) " · only the first ${AudioImport.MAX_MS / 1000} s are used (the file is ${Formats.duration(p.originalMs)})" else "",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = { app.player.toggle("upload-preview-${preview.lastModified()}", preview) }) {
+                            Icon(Icons.Filled.PlayArrow, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Play")
+                        }
+                        Button(onClick = {
+                            scope.launch {
+                                app.greetings.saveUploaded(p)
+                                current = p.sourceName to p.pcm.durationMs
+                                pending = null
+                                onUse()
+                            }
+                        }) { Text("Use this file") }
+                    }
+                }
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+        }
     }
 }
 
