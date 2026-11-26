@@ -21,7 +21,23 @@ import java.util.Locale
 
 /** An installed TTS voice the greeting can use. */
 data class VoiceOption(val name: String, val locale: Locale, val offline: Boolean, val quality: Int) {
-    val label: String get() = "${locale.displayLanguage} (${locale.displayCountry}) · ${name.substringAfterLast("-x-").substringBefore("-")}"
+    /** Short variant code from the engine's name, e.g. "end" in "en-in-x-end-local". */
+    private val variant: String get() = if ("-x-" in name) name.substringAfterLast("-x-").substringBefore("-") else ""
+
+    /** "Voice D", or "Standard" for the engine's default voice for the language. */
+    val title: String get() = when {
+        variant.length >= 3 -> "Voice ${variant.last().uppercaseChar()}"
+        else -> "Standard"
+    }
+
+    /** Character of the voice where it was measured (median pitch on the G60, 2026-11-22). */
+    val character: String? get() = KNOWN[variant] ?: if (variant.isEmpty() && locale.language == "en") "Female" else null
+
+    val label: String get() = "${locale.displayLanguage} (${locale.displayCountry}) · $title"
+
+    private companion object {
+        val KNOWN = mapOf("end" to "Male, deep", "ene" to "Male", "ena" to "Female", "enc" to "Female, bright")
+    }
 }
 
 enum class GreetingKind { MESSAGE, CLOSING }

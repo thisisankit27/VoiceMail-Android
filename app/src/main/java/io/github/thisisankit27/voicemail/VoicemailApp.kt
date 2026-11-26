@@ -8,6 +8,8 @@ import io.github.thisisankit27.voicemail.core.AppLog
 import io.github.thisisankit27.voicemail.data.AppDatabase
 import io.github.thisisankit27.voicemail.data.RecordingStatus
 import io.github.thisisankit27.voicemail.data.SettingsStore
+import io.github.thisisankit27.voicemail.data.VoicemailRepository
+import io.github.thisisankit27.voicemail.ui.voicemail.VoicemailPlayer
 import io.github.thisisankit27.voicemail.greeting.GreetingRepository
 import io.github.thisisankit27.voicemail.helper.HelperLauncher
 import io.github.thisisankit27.voicemail.helper.HelperStatus
@@ -29,6 +31,8 @@ class VoicemailApp : Application() {
     val contacts by lazy { ContactLookup(this) }
     val greetings by lazy { GreetingRepository(this) }
     val notifier by lazy { Notifier(this, contacts) }
+    val voicemails by lazy { VoicemailRepository(this, database.voicemails()) }
+    val player by lazy { VoicemailPlayer(this) }
     val helper: HelperLauncher by lazy { HelperLauncher(this) }
     val engine by lazy {
         VoicemailEngine(
@@ -52,7 +56,7 @@ class VoicemailApp : Application() {
         AppLog.i("process started")
         notifier.createChannels()
         HelperWatchdog.schedule(this)
-        appScope.launch { recoverInterruptedRecordings() }
+        appScope.launch { recoverInterruptedRecordings(); voicemails.purgeDeleted() }
     }
 
     /** Reflects a helper start result in the status notification. */

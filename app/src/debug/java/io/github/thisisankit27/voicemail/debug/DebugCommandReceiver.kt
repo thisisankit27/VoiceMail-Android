@@ -38,6 +38,7 @@ class DebugCommandReceiver : BroadcastReceiver() {
                     "to_voicemail" -> io.github.thisisankit27.voicemail.telephony.CallManager.calls.value.firstOrNull()?.let { app.engine.session(it.id)?.sendToVoicemailNow() }
                     "hangup" -> io.github.thisisankit27.voicemail.telephony.CallManager.hangupAll()
                     "calls" -> AppLog.i("calls: ${io.github.thisisankit27.voicemail.telephony.CallManager.calls.value}")
+                    "seed" -> seed(context)
                     "init" -> AppLog.i("token ready (${app.helper.token.length} chars)")
                     "key" -> AppLog.i("adb key fingerprint ${app.helper.key.fingerprint()} authorized=${app.helper.keyAuthorized} secure=${app.helper.hasSecureSettings()}")
                     else -> AppLog.w("unknown debug cmd $cmd")
@@ -48,5 +49,38 @@ class DebugCommandReceiver : BroadcastReceiver() {
                 pending.finish()
             }
         }
+    }
+
+    /** Sample voicemails with fake numbers and a generated tone, for UI work. */
+    private suspend fun seed(context: Context) {
+        val dao = context.app.database.voicemails()
+        val dir = java.io.File(context.filesDir, "voicemails").apply { mkdirs() }
+        val now = System.currentTimeMillis()
+        val samples = listOf(
+            Triple("+15550100", "Sample Caller", 18_000L) to 25L * 60_000,
+            Triple("+15550101", null, 42_000L) to 3L * 3_600_000,
+            Triple("+15550102", "Delivery", 7_000L) to 27L * 3_600_000,
+            Triple(null, null, 0L) to 50L * 3_600_000,
+            Triple("+15550103", "Sample Friend", 64_000L) to 6L * 86_400_000,
+        )
+        for ((info, ago) in samples) {
+            val (number, name, ms) = info
+            val id = java.util.UUID.randomUUID().toString()
+            var file: String? = null
+            if (ms > 0) {
+                file = "vm_$id.wav"
+                val rate = 16_000
+                val pcm = ShortArray((rate * ms / 1000).toInt()) { i -> (kotlin.math.sin(2 * Math.PI * (300 + (i / 4000) % 5 * 60) * i / rate) * 6000).toInt().toShort() }
+                io.github.thisisankit27.voicemail.core.Wav.write(java.io.File(dir, file), io.github.thisisankit27.voicemail.core.Pcm(rate, 1, pcm))
+            }
+            dao.insert(
+                io.github.thisisankit27.voicemail.data.Voicemail(
+                    id = id, callerNumber = number, presentation = if (number == null) 2 else 1, callerName = name, audioFile = file,
+                    durationMs = ms, createdAt = now - ago, isRead = ago > 26L * 3_600_000,
+                    status = if (ms > 0) io.github.thisisankit27.voicemail.data.RecordingStatus.RECORDED else io.github.thisisankit27.voicemail.data.RecordingStatus.EMPTY,
+                ),
+            )
+        }
+        AppLog.i("seeded ${samples.size} sample voicemails")
     }
 }
