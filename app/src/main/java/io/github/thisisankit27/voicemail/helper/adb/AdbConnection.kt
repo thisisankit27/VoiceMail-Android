@@ -16,6 +16,7 @@ import java.security.PrivateKey
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLEngine
+import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509ExtendedKeyManager
 import javax.net.ssl.X509TrustManager
@@ -146,6 +147,12 @@ class AdbConnection private constructor(
                     read()
                 } catch (e: SocketTimeoutException) {
                     throw NotAuthorizedException("adbd did not answer (prompt not accepted, or key not authorised)")
+                } catch (e: SSLException) {
+                    // TLS 1.3: the client side of the handshake completes before adbd checks our
+                    // certificate, so an unknown key only shows up here, as a CERTIFICATE_UNKNOWN
+                    // alert on the first read (seen on the G05 after Developer options were off).
+                    if (!tls) throw e
+                    throw NotAuthorizedException("TLS refused: this app's key is not authorised for Wireless debugging (${e.message})")
                 }
                 when (m.command) {
                     A_STLS -> {
