@@ -87,9 +87,11 @@ class VoicemailApp : Application() {
         fun describe(status: HelperStatus.Stopped): String = when (status.problem) {
             HelperStatus.Problem.NEEDS_SECURE_SETTINGS -> "Setup isn't finished: the app can't switch on Wireless debugging yet."
             HelperStatus.Problem.NO_WIFI -> "Connect to Wi-Fi. The audio helper starts over Wireless debugging, which needs Wi-Fi."
-            HelperStatus.Problem.WIRELESS_DEBUGGING_UNAVAILABLE -> "Wireless debugging didn't start. If the phone asks \"Allow wireless debugging on this network?\", choose Always allow."
+            HelperStatus.Problem.WIRELESS_DEBUGGING_UNAVAILABLE -> "Wireless debugging didn't start. On your own Wi-Fi, if the phone asks \"Allow wireless debugging on this network?\", choose Always allow. Never allow it on public or other people's Wi-Fi."
             HelperStatus.Problem.KEY_NOT_AUTHORIZED -> "The app's debugging key isn't authorised on this phone. Open Voicemail setup to authorise it."
             HelperStatus.Problem.LAUNCH_FAILED -> status.detail.ifBlank { "The audio helper didn't start." }
+            HelperStatus.Problem.DEVELOPER_OPTIONS_OFF -> "Developer options are off. Turn them back on, then open this app: it restarts the helper by itself."
+            HelperStatus.Problem.NETWORK_SKIPPED -> "Couldn't start on this Wi-Fi. If it's your own network, tap Start helper and choose Always allow. Elsewhere, wait until you're home."
         }
     }
 }

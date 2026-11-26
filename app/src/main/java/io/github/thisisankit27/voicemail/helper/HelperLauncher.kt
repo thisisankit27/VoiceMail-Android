@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.SystemClock
 import android.provider.Settings
 import io.github.thisisankit27.voicemail.core.AppLog
 import io.github.thisisankit27.voicemail.helper.adb.AdbConnection
@@ -39,6 +40,14 @@ sealed interface HelperStatus {
         KEY_NOT_AUTHORIZED,
         /** The helper was launched but never answered. */
         LAUNCH_FAILED,
+        /** Developer options are off, so Wireless debugging (and the helper start) is unavailable. */
+        DEVELOPER_OPTIONS_OFF,
+        /**
+         * An automatic start already failed on this Wi-Fi connection (often a network not trusted
+         * for Wireless debugging). Not retried automatically, so Android doesn't keep asking
+         * "Allow wireless debugging on this network?"; a tap on Start helper still retries.
+         */
+        NETWORK_SKIPPED,
     }
 }
 
@@ -105,22 +114,29 @@ class HelperLauncher(private val context: Context) {
     /**
      * Makes sure the helper runs, starting it if needed. [onKeyPrompt] is called if the phone shows
      * the one-time "Allow debugging?" prompt (only on the legacy `adb tcpip` transport during setup).
+     * Automatic starts ([userInitiated] false: boot, watchdog, incoming call) give up on a Wi-Fi
+     * connection after one failure there; the owner tapping Start always tries.
      */
-    suspend fun ensureRunning(trigger: String, onKeyPrompt: () -> Unit = {}): HelperStatus = mutex.withLock {
+    suspend fun ensureRunning(trigger: String, userInitiated: Boolean = false, onKeyPrompt: () -> Unit = {}): HelperStatus = mutex.withLock {
         withContext(Dispatchers.IO) {
-            val result = start(trigger, onKeyPrompt)
+            val result = start(trigger, userInitiated, onKeyPrompt)
             _status.value = result
             if (result is HelperStatus.Stopped) AppLog.w("helper not started ($trigger): ${result.problem} ${result.detail}")
             result
         }
     }
 
-    private suspend fun start(trigger: String, onKeyPrompt: () -> Unit): HelperStatus {
+    private suspend fun start(trigger: String, userInitiated: Boolean, onKeyPrompt: () -> Unit): HelperStatus {
         client.ping()?.let { info ->
             if (isCurrent(info)) return HelperStatus.Running(info)
             AppLog.i("helper is stale (v${info.version}, other APK); restarting it")
             client.shutdown()
             delay(300)
+        }
+        if (!developerOptionsOn()) return HelperStatus.Stopped(HelperStatus.Problem.DEVELOPER_OPTIONS_OFF)
+        val wifi = wifiHandle()
+        if (!userInitiated && wifi != null && wifi == prefs.getLong(KEY_FAILED_WIFI, NO_WIFI)) {
+            return HelperStatus.Stopped(HelperStatus.Problem.NETWORK_SKIPPED)
         }
         AppLog.i("starting helper ($trigger)")
 
@@ -146,13 +162,17 @@ class HelperLauncher(private val context: Context) {
             var port: Int? = null
             for (attempt in 1..PORT_ATTEMPTS) {
                 port = AdbPortFinder.findTlsPort(context, PORT_WAIT_MS)
-                if (port != null || !switchedOn || attempt == PORT_ATTEMPTS) break
+                // Restarting re-asks on an untrusted network, so only retry where it helps: right
+                // after a boot (mdnsd not up yet) or when the owner asked.
+                val retryHelps = userInitiated || SystemClock.elapsedRealtime() < BOOT_WINDOW_MS
+                if (port != null || !switchedOn || !retryHelps || attempt == PORT_ATTEMPTS) break
                 AppLog.i("no Wireless debugging port yet (try $attempt); restarting Wireless debugging")
                 _status.value = HelperStatus.Starting("Restarting Wireless debugging (try ${attempt + 1})")
                 Settings.Global.putInt(context.contentResolver, ADB_WIFI_ENABLED, 0)
                 delay(1_000)
                 Settings.Global.putInt(context.contentResolver, ADB_WIFI_ENABLED, 1)
             }
+            if (port == null && switchedOn && wifi != null) prefs.edit().putLong(KEY_FAILED_WIFI, wifi).apply()
             port ?: return HelperStatus.Stopped(
                     if (onWifi()) HelperStatus.Problem.WIRELESS_DEBUGGING_UNAVAILABLE else HelperStatus.Problem.NO_WIFI,
                     "No Wireless debugging port appeared. If the phone asked \"Allow wireless debugging on this network?\", choose Always allow.",
@@ -189,7 +209,7 @@ class HelperLauncher(private val context: Context) {
             delay(250)
             client.ping()?.let { info ->
                 if (isCurrent(info)) {
-                    prefs.edit().putLong(KEY_LAST_START, System.currentTimeMillis()).apply()
+                    prefs.edit().putLong(KEY_LAST_START, System.currentTimeMillis()).remove(KEY_FAILED_WIFI).apply()
                     AppLog.i("helper running uid=${info.uid}")
                     return HelperStatus.Running(info)
                 }
@@ -249,6 +269,15 @@ class HelperLauncher(private val context: Context) {
         _status.value = HelperStatus.Stopped(HelperStatus.Problem.LAUNCH_FAILED, "Stopped by you")
     }
 
+    fun developerOptionsOn(): Boolean =
+        Settings.Global.getInt(context.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
+
+    /** Identifies the current Wi-Fi connection (changes on every reconnect); null when not on Wi-Fi. */
+    private fun wifiHandle(): Long? {
+        val cm = context.getSystemService(ConnectivityManager::class.java)
+        return cm.allNetworks.firstOrNull { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true }?.networkHandle
+    }
+
     private fun onWifi(): Boolean {
         val cm = context.getSystemService(ConnectivityManager::class.java)
         return cm.allNetworks.any { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true }
@@ -262,6 +291,10 @@ class HelperLauncher(private val context: Context) {
         private const val KEY_LAST_START = "last_start"
         private const val KEY_LAST_ADB = "last_adb"
         private const val PORT_ATTEMPTS = 4
+        private const val KEY_FAILED_WIFI = "failed_wifi_handle"
+        private const val NO_WIFI = Long.MIN_VALUE
+        /** mdnsd may not be up for this long after a boot. */
+        private const val BOOT_WINDOW_MS = 15L * 60 * 1000
         private const val PORT_WAIT_MS = 8_000L
         private const val KEY_REFRESH_MS = 5L * 24 * 60 * 60 * 1000
     }

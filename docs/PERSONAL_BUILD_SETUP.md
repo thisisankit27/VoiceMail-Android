@@ -37,6 +37,16 @@ After the ring time (20 s by default) the app answers. The caller hears your gre
 - Battery must be **Unrestricted**: Android 15's background firewall otherwise blocks the app's loopback socket to the helper. The helper launch sets it automatically, and setup step 3 shows it.
 - On a slow phone the boot broadcast can arrive minutes after unlock. A call arriving before then starts the helper during the ring. See the [G05 log](device-logs/moto-g05-app-run-2026-11-23.md).
 
+## Pausing it on purpose (Developer options off)
+Some apps (banking, UPI) refuse to run while Developer options are on. You can turn Developer options **off** while you use them. When you turn them back **on**, open the app: it restarts the helper by itself (on Wi-Fi). While Developer options are off, the helper may or may not keep running. If it isn't running, calls ring out normally. The status card says *Developer options are off*.
+
+## No Wi-Fi after a reboot
+The helper can only be **started** over Wireless debugging, which needs a Wi-Fi network you have trusted. Mobile data does not count. After a reboot with no trusted Wi-Fi, calls ring out normally until you are back on one, and then it starts by itself. Ways around it when you're out:
+- **A personal hotspot you own** (e.g. your second phone): join it once at home, tick *Always allow on this network*, and it becomes a trusted network you can use anywhere. Internet access isn't needed, only the Wi-Fi link.
+- A PC with USB: `scripts/helper-usb.sh`.
+
+Automatic starts try **once per Wi-Fi connection**. On someone else's Wi-Fi, Android asks *Allow wireless debugging on this network?*. **Tap Cancel.** The app then won't ask again on that connection. Tapping *Start helper* yourself always retries.
+
 ## Known limits
 - Starting the helper needs **Wi-Fi** (an Android rule for Wireless debugging). Once started, it does not need Wi-Fi.
 - Calls that arrive after a reboot but before the first unlock, or before Wi-Fi connects, are not answered.

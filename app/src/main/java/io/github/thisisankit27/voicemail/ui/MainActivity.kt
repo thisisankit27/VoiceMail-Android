@@ -44,6 +44,20 @@ class MainActivity : ComponentActivity() {
         handle(intent)
     }
 
+    /**
+     * Opening the app restarts the helper if it stopped (e.g. after Developer options were turned
+     * off and on again). Counts as automatic: it won't keep re-asking on a Wi-Fi that already failed.
+     */
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            val app = app
+            if (!app.settings.current().enabled || !app.helper.developerOptionsOn()) return@launch
+            if (app.helper.check() is io.github.thisisankit27.voicemail.helper.HelperStatus.Running) return@launch
+            app.onHelperStatus(app.helper.ensureRunning("app opened"))
+        }
+    }
+
     override fun onStop() {
         app.player.stop()
         super.onStop()

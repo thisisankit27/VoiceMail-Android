@@ -121,11 +121,11 @@ fun SetupScreen(onBack: (() -> Unit)?, onOpenGreeting: () -> Unit) {
                     Code("adb tcpip 5555")
                     Text("Then tap Authorise. When the phone asks \"Allow USB debugging?\", tick Always allow and tap Allow. Afterwards run:", style = MaterialTheme.typography.bodyMedium)
                     Code("adb usb")
-                    Button(enabled = !helperBusy, onClick = { scope.launch { app.onHelperStatus(app.helper.ensureRunning("setup")) } }) { Text("Authorise") }
+                    Button(enabled = !helperBusy, onClick = { scope.launch { app.onHelperStatus(app.helper.ensureRunning("setup", userInitiated = true)) } }) { Text("Authorise") }
                 }
             }
 
-            HelperStep(s, helperBusy) { scope.launch { app.onHelperStatus(app.helper.ensureRunning("setup")) } }
+            HelperStep(s, helperBusy) { scope.launch { app.onHelperStatus(app.helper.ensureRunning("setup", userInitiated = true)) } }
 
             Step(6, "Choose your greeting", s.greetingReady,
                 "Callers hear it before the tone. Pick a voice and add your name. You can also record it in your own voice.") {
@@ -147,7 +147,7 @@ fun SetupScreen(onBack: (() -> Unit)?, onOpenGreeting: () -> Unit) {
                             app.settings.update { it.copy(enabled = on, onboardingDone = true) }
                             if (on) {
                                 app.greetings.renderAll(app.settings.current())
-                                app.onHelperStatus(app.helper.ensureRunning("enabled"))
+                                app.onHelperStatus(app.helper.ensureRunning("enabled", userInitiated = true))
                             }
                         }
                     })

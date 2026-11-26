@@ -98,7 +98,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenSetup: () -> Unit, onOpenGreeting: 
                 turnOff = it
             }
             Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { scope.launch { app.onHelperStatus(app.helper.ensureRunning("settings")) } }) { Text("Start / check") }
+                TextButton(onClick = { scope.launch { app.onHelperStatus(app.helper.ensureRunning("settings", userInitiated = true)) } }) { Text("Start / check") }
                 TextButton(onClick = { scope.launch { app.helper.stop() } }) { Text("Stop helper") }
             }
 
@@ -119,7 +119,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenSetup: () -> Unit, onOpenGreeting: 
                 s.saveCallerSide,
             ) { on -> update { it.copy(saveCallerSide = on) } }
             Text(
-                "Voicemail ${BuildConfig.VERSION_NAME} · personal build. Messages and greetings are stored only on this phone.",
+                "Voicemail Phone ${BuildConfig.VERSION_NAME} · personal build. Messages and greetings are stored only on this phone.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
             )
