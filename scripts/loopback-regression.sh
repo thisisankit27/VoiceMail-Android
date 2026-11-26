@@ -79,5 +79,8 @@ expect_not "app did not answer" "session: answering after"
 settle 1
 scripts/helper-usb.sh >/dev/null
 
+$B ring --ei value 20 >/dev/null
+# Never leave the test calling account enabled: it would be offered for real outgoing calls.
+adb shell telecom set-phone-account-disabled "$P/.debug.LoopbackConnectionService" loopback 0 >/dev/null
 echo "== $pass passed, $fail failed"
 [ "$fail" = 0 ]
