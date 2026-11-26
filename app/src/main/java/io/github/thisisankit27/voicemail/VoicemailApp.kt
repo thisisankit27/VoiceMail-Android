@@ -90,7 +90,7 @@ class VoicemailApp : Application() {
             HelperStatus.Problem.WIRELESS_DEBUGGING_UNAVAILABLE -> "Wireless debugging didn't start. On your own Wi-Fi, if the phone asks \"Allow wireless debugging on this network?\", choose Always allow. Never allow it on public or other people's Wi-Fi."
             HelperStatus.Problem.KEY_NOT_AUTHORIZED -> "The app's debugging key isn't authorised on this phone. Open Voicemail setup to authorise it."
             HelperStatus.Problem.LAUNCH_FAILED -> status.detail.ifBlank { "The audio helper didn't start." }
-            HelperStatus.Problem.DEVELOPER_OPTIONS_OFF -> "Developer options are off. Turn them back on, then open this app: it restarts the helper by itself."
+            HelperStatus.Problem.DEVELOPER_OPTIONS_OFF -> "Developer options are off. Turn them back on, then open this app. Turning them off can make the phone forget the app's debugging key; if so, open Voicemail setup to authorise it again."
             HelperStatus.Problem.NETWORK_SKIPPED -> "Couldn't start on this Wi-Fi. If it's your own network, tap Start helper and choose Always allow. Elsewhere, wait until you're home."
         }
     }
