@@ -121,7 +121,17 @@ class VoicemailSession(
                 return
             }
             // 2. The helper must be up, or the caller would hear silence. Leave the call ringing.
-            if (withContext(Dispatchers.IO) { deps.helperClient.ping() } == null) {
+            // If the helper is being started right now (call arrived before it was up), give it a moment.
+            val helperUp = withContext(Dispatchers.IO) {
+                var ok = deps.helperClient.ping() != null
+                val until = SystemClock.elapsedRealtime() + HELPER_WAIT_MS
+                while (!ok && SystemClock.elapsedRealtime() < until && state.value == Call.STATE_RINGING) {
+                    delay(500)
+                    ok = deps.helperClient.ping() != null
+                }
+                ok
+            }
+            if (!helperUp) {
                 AppLog.w("session: audio helper not running; letting the call ring out")
                 deps.onHelperMissing()
                 return
@@ -346,6 +356,8 @@ class VoicemailSession(
         const val CAPTURE_RATE = 16_000
         /** Time the line stays open after the last sound, so it reaches the caller before hang-up. */
         const val HANGUP_GRACE_MS = 1_500L
+        /** Extra ringing allowed for a helper that is still starting when the timer fires. */
+        const val HELPER_WAIT_MS = 8_000L
 
         fun callerSideFile(context: android.content.Context, id: String) = File(File(context.filesDir, "voicemails"), "vm_${id}_caller.wav")
         /** A 100 ms window louder than this counts as the caller speaking. */

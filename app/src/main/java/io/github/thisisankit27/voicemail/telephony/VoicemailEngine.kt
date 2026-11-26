@@ -27,6 +27,8 @@ class VoicemailEngine(
     private val notifier: Notifier,
     private val scope: CoroutineScope,
     private val onHelperDown: () -> Unit,
+    /** Starts the helper now (Wireless debugging path). Used when a call arrives and it isn't running. */
+    private val startHelper: suspend (reason: String) -> Unit,
 ) {
     private val sessions = ConcurrentHashMap<Call, VoicemailSession>()
 
@@ -50,6 +52,12 @@ class VoicemailEngine(
             val session = VoicemailSession(call, this@VoicemailEngine, settings, scope)
             sessions[call] = session
             session.start()
+            // On a slow phone the boot broadcast can arrive minutes after unlock, so the helper may
+            // not be up yet. Start it now, during the ring; the session checks again before answering.
+            if (withContext(Dispatchers.IO) { helperClient.ping() } == null) {
+                AppLog.i("helper not running at call arrival; starting it during the ring")
+                startHelper("incoming call")
+            }
         }
     }
 

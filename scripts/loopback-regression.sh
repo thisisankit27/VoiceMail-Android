@@ -79,11 +79,12 @@ expect "answered immediately" "session: answering after [0-9]{3,4} ms"
 settle 25
 $B ring --ei value 6 >/dev/null
 
-echo "== Helper not running: let it ring, tell the owner"
+echo "== Helper not running when the call arrives: started during the ring, then answers"
 $B helper_stop >/dev/null; sleep 1
-call message; sleep 9
-expect "helper missing detected" "audio helper not running; letting the call ring out"
-expect_not "app did not answer" "session: answering after"
+call silent; sleep 30
+expect "helper started during the ring" "helper not running at call arrival; starting it during the ring"
+expect "helper came up" "helper running uid=2000"
+expect "app answered" "session: answering after"
 settle 1
 scripts/helper-usb.sh >/dev/null
 

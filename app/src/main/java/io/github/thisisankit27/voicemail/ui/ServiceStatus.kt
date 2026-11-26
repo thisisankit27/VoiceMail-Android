@@ -32,6 +32,8 @@ data class SetupSnapshot(
     val helper: HelperStatus,
     val settings: AppSettings?,
     val greetingReady: Boolean,
+    /** Battery "Unrestricted": required on Android 15, where background apps lose network (and loopback) access. */
+    val batteryUnrestricted: Boolean,
 ) {
     val permissionsOk get() = contacts && phone && callLog && notifications
     val state: ServiceState get() = when {
@@ -78,6 +80,7 @@ private fun snapshot(context: Context, settings: AppSettings?, helper: HelperSta
         secureSettings = app.helper.hasSecureSettings(),
         helper = helper,
         settings = settings,
+        batteryUnrestricted = context.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName),
         greetingReady = settings?.let { app.greetings.isRendered(it, io.github.thisisankit27.voicemail.greeting.GreetingKind.MESSAGE) } ?: false,
     )
 }

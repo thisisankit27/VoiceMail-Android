@@ -24,8 +24,31 @@ object AdbPortFinder {
         false
     }
 
-    /** Returns the Wireless debugging port, or null if none appears within [timeoutMs]. */
+    /**
+     * Returns this phone's Wireless debugging port, or null if none appears within [timeoutMs].
+     * Tries adbd's system property first (readable on some builds), then mDNS.
+     *
+     * Right after a boot on the G05, mdnsd is not running yet, so adbd's announcement fails
+     * ("Could not register mDNS service, error -65563"). mdnsd is started on demand, so the caller
+     * restarts Wireless debugging to make adbd announce again (see HelperLauncher).
+     */
     suspend fun findTlsPort(context: Context, timeoutMs: Long): Int? {
+        propertyPort()?.takeIf { AdbConnection.answersTls(it) }?.let {
+            AppLog.i("Wireless debugging port $it (system property)")
+            return it
+        }
+        return findByMdns(context, timeoutMs)
+    }
+
+    /** adbd publishes its TLS port in service.adb.tls.port. Not readable by apps everywhere. */
+    internal fun propertyPort(): Int? = try {
+        val p = ProcessBuilder("getprop", "service.adb.tls.port").redirectErrorStream(true).start()
+        p.inputStream.bufferedReader().readText().trim().toIntOrNull()?.takeIf { it in 1..65535 }.also { p.waitFor() }
+    } catch (_: Exception) {
+        null
+    }
+
+    suspend fun findByMdns(context: Context, timeoutMs: Long): Int? {
         val nsd = context.getSystemService(NsdManager::class.java)
         val found = Channel<NsdServiceInfo>(Channel.UNLIMITED)
         val listener = object : NsdManager.DiscoveryListener {

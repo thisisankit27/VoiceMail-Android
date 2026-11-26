@@ -289,6 +289,9 @@ private class ShellContext : ContextWrapper(null) {
     override fun getAttributionSource(): AttributionSource =
         AttributionSource.Builder(Process.myUid()).setPackageName(SHELL_PACKAGE).build()
 
+    /** Android 14+: AudioRecord.Builder asks which (virtual) device the context belongs to. */
+    override fun getDeviceId(): Int = DEVICE_ID_DEFAULT
+
     companion object {
         const val SHELL_PACKAGE = "com.android.shell"
     }

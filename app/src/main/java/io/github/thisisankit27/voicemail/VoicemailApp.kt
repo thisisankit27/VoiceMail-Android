@@ -51,6 +51,7 @@ class VoicemailApp : Application() {
                 notifier.helperDown("A call came in but the audio helper wasn't running, so voicemail didn't answer. Tap to restart it.")
                 HelperWatchdog.startSoon(this, "helper missing during a call")
             },
+            startHelper = { reason -> appScope.launch { onHelperStatus(helper.ensureRunning(reason)) } },
         )
     }
 

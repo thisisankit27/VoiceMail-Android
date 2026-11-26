@@ -33,6 +33,10 @@ Developer scripts (debug builds only):
 ## What callers experience
 After the ring time (20 s by default) the app answers. The caller hears your greeting, a beep, and then has **30 seconds** to speak. Two short beeps mean time is up, and the call ends. Settings → *Keep what callers hear* saves the audio sent to the caller with each voicemail, for checking.
 
+## Android 15 notes (Moto G05)
+- Battery must be **Unrestricted**: Android 15's background firewall otherwise blocks the app's loopback socket to the helper. The helper launch sets it automatically, and setup step 3 shows it.
+- On a slow phone the boot broadcast can arrive minutes after unlock. A call arriving before then starts the helper during the ring. See the [G05 log](device-logs/moto-g05-app-run-2026-11-23.md).
+
 ## Known limits
 - Starting the helper needs **Wi-Fi** (an Android rule for Wireless debugging). Once started, it does not need Wi-Fi.
 - Calls that arrive after a reboot but before the first unlock, or before Wi-Fi connects, are not answered.
